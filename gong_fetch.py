@@ -21,6 +21,9 @@ Usage:
     python gong_fetch.py --add-alias ventura-foods "Ventura Foods"
     python gong_fetch.py --add-alias ventura-foods "VF"
     python gong_fetch.py --show-routing
+
+    # Owner config
+    python gong_fetch.py --init-owners   # scaffold gong_owners.json
 """
 
 import argparse
@@ -44,12 +47,21 @@ except ImportError:
 
 TABLE = "grafanalabs-data-marts.mrt_core.brk_gong_calls"
 
-# Add your team members and their Gong owner IDs here.
-# See README.md § "Setup: finding your Gong owner IDs" for how to look these up.
-OWNER_IDS = {
-    # "Jane Smith": "1234567890123456789",
-    # "John Doe":   "9876543210987654321",
-}
+OWNERS_FILE = Path(__file__).parent / "gong_owners.json"
+
+
+def _load_owner_ids() -> dict:
+    """Load owner name→id mapping from gong_owners.json, or return empty dict."""
+    if not OWNERS_FILE.exists():
+        return {}
+    try:
+        return json.loads(OWNERS_FILE.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"WARNING: Could not load {OWNERS_FILE}: {e}", file=sys.stderr)
+        return {}
+
+
+OWNER_IDS = _load_owner_ids()
 OWNER_ID_TO_NAME = {v: k for k, v in OWNER_IDS.items()}
 
 
@@ -480,6 +492,10 @@ def run_fetch(args):
 # ---------------------------------------------------------------------------
 
 def run_sync(args):
+    if not OWNER_IDS:
+        print(f"ERROR: No owners configured. Run `python3 gong_fetch.py --init-owners` to create {OWNERS_FILE}, then add your name and Gong owner ID.")
+        sys.exit(1)
+
     client = get_bq_client()
     customers_dir = Path(args.customers_dir)
     owner_ids = list(OWNER_IDS.values())
@@ -612,6 +628,23 @@ def run_sync(args):
 
 
 # ---------------------------------------------------------------------------
+# Owner management commands
+# ---------------------------------------------------------------------------
+
+def cmd_init_owners():
+    """Scaffold gong_owners.json if it doesn't already exist."""
+    if OWNERS_FILE.exists():
+        print(f"{OWNERS_FILE} already exists.")
+        print("Edit it directly to add or remove owners.")
+        return
+    template = {"Your Name": "your-gong-owner-id"}
+    OWNERS_FILE.write_text(json.dumps(template, indent=2), encoding="utf-8")
+    print(f"Created {OWNERS_FILE}")
+    print("Edit it to add your name and Gong owner ID.")
+    print("See README.md for how to find your owner ID in BigQuery.")
+
+
+# ---------------------------------------------------------------------------
 # Routing management commands
 # ---------------------------------------------------------------------------
 
@@ -702,10 +735,15 @@ def main():
     parser.add_argument("--init-routing", action="store_true", help="Auto-generate gong_routing.json for all customer dirs")
     parser.add_argument("--add-alias", nargs=2, metavar=("DIR", "PATTERN"), help="Append a routing alias to a customer dir")
     parser.add_argument("--show-routing", action="store_true", help="Print the current routing table for all customer dirs")
+    parser.add_argument("--init-owners", action="store_true", help=f"Scaffold {OWNERS_FILE.name} with a template entry")
 
     args = parser.parse_args()
 
     customers_dir = Path(args.customers_dir)
+
+    if args.init_owners:
+        cmd_init_owners()
+        return
 
     if args.init_routing:
         cmd_init_routing(customers_dir)

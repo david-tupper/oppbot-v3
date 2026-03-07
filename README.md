@@ -23,12 +23,18 @@ gcloud auth application-default login
 
 ### 2. Add your team's Gong owner IDs
 
-Open `gong_fetch.py` and populate `OWNER_IDS` with the people whose calls you want to pull:
+Scaffold the owners config file:
 
-```python
-OWNER_IDS = {
-    "Jane Smith": "1234567890123456789",
-    "John Doe":   "9876543210987654321",
+```bash
+python3 gong_fetch.py --init-owners
+```
+
+This creates `gong_owners.json` in the repo root (gitignored). Edit it to add your team:
+
+```json
+{
+  "Jane Smith": "1234567890123456789",
+  "John Doe":   "9876543210987654321"
 }
 ```
 
@@ -271,6 +277,12 @@ python3 gong_fetch.py --schema    # print all columns in brk_gong_calls
 
 ```bash
 python3 gong_fetch.py --sync --customers-dir /path/to/customers
+```
+
+### Owner config
+
+```bash
+python3 gong_fetch.py --init-owners    # scaffold gong_owners.json (edit to add your IDs)
 ```
 
 ### Routing config management
