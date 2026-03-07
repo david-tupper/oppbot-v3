@@ -828,6 +828,13 @@ def main():
         except ValueError:
             parser.error(f"--until must be in YYYY-MM-DD format, got: {args.until}")
 
+    if args.account or args.sync:
+        import os
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            print("ERROR: ANTHROPIC_API_KEY is not set. Enrichment requires this key.")
+            print("Set it with: export ANTHROPIC_API_KEY=your-key-here")
+            sys.exit(1)
+
     if args.account:
         run_fetch(args)
     elif args.sync:
