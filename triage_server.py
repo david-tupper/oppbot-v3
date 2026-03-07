@@ -6,11 +6,20 @@ Usage:
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
 import threading
 from pathlib import Path
+
+# Load .env from repo root if present
+_env_path = Path(__file__).parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text().splitlines():
+        if _line.strip() and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
 
 try:
     from flask import Flask, jsonify, request, send_file

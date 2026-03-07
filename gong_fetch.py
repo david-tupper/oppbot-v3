@@ -28,10 +28,19 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# Load .env from repo root if present
+_env_path = Path(__file__).parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text().splitlines():
+        if _line.strip() and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
 
 try:
     from tech_stack_update import update_tech_stack
@@ -829,7 +838,6 @@ def main():
             parser.error(f"--until must be in YYYY-MM-DD format, got: {args.until}")
 
     if args.account or args.sync:
-        import os
         if not os.environ.get("ANTHROPIC_API_KEY"):
             print("ERROR: ANTHROPIC_API_KEY is not set. Enrichment requires this key.")
             print("Set it with: export ANTHROPIC_API_KEY=your-key-here")
