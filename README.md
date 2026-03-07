@@ -47,7 +47,7 @@ Copy the `owner_id` from the result. The dict key is a display label used in tra
 ### 3. Add the local hostname (one time)
 
 ```bash
-echo "127.0.0.1 gong-triage.local" | sudo tee -a /etc/hosts
+echo "127.0.0.1 oppbot.local" | sudo tee -a /etc/hosts
 ```
 
 ---
@@ -61,7 +61,7 @@ python3 gong_fetch.py --sync    # pull last 30 days, auto-route to customer dirs
 ./triage.sh                      # review unmatched calls in browser
 ```
 
-`triage.sh` opens `http://gong-triage.local` and prompts for `sudo` once per boot to set up port forwarding (80 → 5555). Press Ctrl+C to stop.
+`triage.sh` opens `http://oppbot.local` and prompts for `sudo` once per boot to set up port forwarding (80 → 5555). Press Ctrl+C to stop.
 
 ---
 
@@ -142,7 +142,7 @@ Calls that don't match any strategy go to `_unmatched/unprocessed/`.
 ./triage.sh
 ```
 
-Opens `http://gong-triage.local`. Use the keyboard to move fast:
+Opens `http://oppbot.local`. Use the keyboard to move fast:
 
 | Key | Action |
 |-----|--------|

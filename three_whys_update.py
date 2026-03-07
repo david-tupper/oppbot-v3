@@ -87,21 +87,30 @@ Return exactly this markdown structure (only include Whys where evidence exists)
 #### {call_title} — {call_date} ([Gong]({gong_url}))
 
 ##### Why Grafana?
+
+##### Notes
 - bullet summary 1 ([{call_title}]({gong_url}))
 - bullet summary 2 ([{call_title}]({gong_url}))
 
-> "{{quote}}" — {{Speaker}} ([{call_title}]({gong_url}))
-> "{{quote}}" — {{Speaker}} ([{call_title}]({gong_url}))
+##### Quotes
+- "{{quote}}" — {{Speaker}} ([{call_title}]({gong_url}))
+- "{{quote}}" — {{Speaker}} ([{call_title}]({gong_url}))
 
 ##### Why Now?
+
+##### Notes
 - ... ([{call_title}]({gong_url}))
 
-> "..." — {{Speaker}} ([{call_title}]({gong_url}))
+##### Quotes
+- "..." — {{Speaker}} ([{call_title}]({gong_url}))
 
 ##### Why Anything?
+
+##### Notes
 - ... ([{call_title}]({gong_url}))
 
-> "..." — {{Speaker}} ([{call_title}]({gong_url}))"""
+##### Quotes
+- "..." — {{Speaker}} ([{call_title}]({gong_url}))"""
 
 SYNTHESIS_PROMPT_TEMPLATE = """\
 Based on the customer evidence below, write a 2-3 sentence synthesis for each Why section
@@ -206,8 +215,16 @@ def _extract_structured_data(
     """
     result = {}
     for why_key, block in call_blocks.items():
+        # Extract content from ##### Notes section
+        nm = re.search(r"^##### Notes\s*\n(.*?)(?=^#####|\Z)", block, re.MULTILINE | re.DOTALL)
+        notes_content = nm.group(1) if nm else ""
+
+        # Extract content from ##### Quotes section
+        qm = re.search(r"^##### Quotes\s*\n(.*?)(?=^#####|\Z)", block, re.MULTILINE | re.DOTALL)
+        quotes_content = qm.group(1) if qm else ""
+
         bullets = []
-        for m in re.finditer(r"^- (.+)$", block, re.MULTILINE):
+        for m in re.finditer(r"^- (.+)$", notes_content, re.MULTILINE):
             text = m.group(1)
             # Strip trailing ([Call Title](url))
             text = re.sub(r"\s+\(\[[^\]]*\]\([^\)]*\)\)\s*$", "", text).strip()
@@ -215,7 +232,7 @@ def _extract_structured_data(
                 bullets.append(text)
 
         quotes = []
-        for m in re.finditer(r'^> "(.+?)" — (.+?)\s+\(\[', block, re.MULTILINE):
+        for m in re.finditer(r'^- "(.+?)" — (.+?)\s+\(\[', quotes_content, re.MULTILINE):
             quotes.append({"text": m.group(1), "speaker": m.group(2).strip()})
 
         result[why_key] = {
