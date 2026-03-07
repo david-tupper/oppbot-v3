@@ -32,7 +32,7 @@ from pathlib import Path
 TABLE = "grafanalabs-data-marts.mrt_core.brk_gong_calls"
 
 # Add your team members and their Gong owner IDs here.
-# To find an owner ID: query brk_gong_calls WHERE owner_email = '<email>' LIMIT 1
+# See README.md § "Setup: finding your Gong owner IDs" for how to look these up.
 OWNER_IDS = {
     # "Jane Smith": "1234567890123456789",
     # "John Doe":   "9876543210987654321",

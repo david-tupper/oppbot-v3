@@ -118,6 +118,34 @@ launchctl load ~/Library/LaunchAgents/com.davidtupper.gongsync.plist
 
 ---
 
+## Setup: finding your Gong owner IDs
+
+Before running a sync, populate `OWNER_IDS` in `gong_fetch.py` with the people whose calls you want to pull.
+
+1. **Find a call you know they organised.** Any call where they were the host works — you just need the exact title and date.
+
+2. **Run this query in BigQuery** (substituting the title and date):
+
+```sql
+SELECT owner_id, call_title, call_started_at
+FROM `grafanalabs-data-marts.mrt_core.brk_gong_calls`
+WHERE DATE(call_started_at) = '2025-06-15'
+  AND call_title = 'Grafana <> Acme Corp'
+LIMIT 10
+```
+
+3. **Copy the `owner_id`** from the result and add it to the dict:
+
+```python
+OWNER_IDS = {
+    "Jane Smith": "1234567890123456789",
+}
+```
+
+The key is just a display label used in transcript filenames — it doesn't need to match anything in the system.
+
+---
+
 ## Requirements
 
 - Python 3.11+
