@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gong Triage</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3347;
+    --accent: #5b8af5;
+    --accent-dim: #3a5cbf;
+    --text: #d4d8e8;
+    --text-dim: #6b7295;
+    --text-muted: #3f4460;
+    --selected-bg: #1e2540;
+    --selected-border: #5b8af5;
+    --skip-color: #f5855b;
+    --route-color: #5bf59a;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* Header */
+  #header {
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  #header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-family: var(--mono);
+    color: var(--text);
+  }
+
+  #count-badge {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  /* Column headers */
+  #col-headers {
+    display: grid;
+    grid-template-columns: var(--cols);
+    padding: 5px 20px 5px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  #col-headers > div {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    position: relative;
+  }
+
+  #col-headers .col-size {
+    text-align: right;
+  }
+
+  .resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+  }
+
+  .resize-handle::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    top: 20%;
+    width: 1px;
+    height: 60%;
+    background: var(--border);
+    transition: background 0.1s;
+  }
+
+  .resize-handle:hover::after,
+  .resize-handle.dragging::after {
+    background: var(--accent);
+  }
+
+  /* Call list */
+  #list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    outline: none;
+  }
+
+  #list-container::-webkit-scrollbar { width: 6px; }
+  #list-container::-webkit-scrollbar-track { background: transparent; }
+  #list-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .call-row {
+    display: grid;
+    grid-template-columns: var(--cols);
+    align-items: center;
+    gap: 0;
+    padding: 7px 20px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.08s;
+    position: relative;
+  }
+
+  .call-row:hover {
+    background: var(--surface);
+  }
+
+  .call-row.selected {
+    background: var(--selected-bg);
+    border-left-color: var(--selected-border);
+  }
+
+  .call-row.dim .col-title,
+  .call-row.dim .col-date,
+  .call-row.dim .col-owner,
+  .call-row.dim .col-brief {
+    opacity: 0.45;
+  }
+
+  .col-date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .col-owner {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 12px;
+  }
+
+  .col-title {
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 4px;
+  }
+
+  .col-brief {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 12px;
+    text-align: left;
+  }
+
+  .col-size {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  .call-row.dim .col-size {
+    opacity: 0.35;
+  }
+
+  .ac-item.ac-create {
+    color: var(--accent);
+    border-top: 1px solid var(--border);
+  }
+
+  .ac-item.ac-create.ac-invalid {
+    color: var(--text-muted);
+    cursor: default;
+  }
+
+  /* Empty state */
+  #empty-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--text-dim);
+    font-size: 15px;
+    gap: 8px;
+  }
+
+  #empty-state.visible { display: flex; }
+
+  #empty-icon {
+    font-size: 32px;
+    margin-bottom: 4px;
+  }
+
+  /* Tabs */
+  #tabs {
+    display: flex;
+    gap: 4px;
+    margin-left: 12px;
+  }
+
+  .tab {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+
+  .tab.active {
+    background: var(--selected-bg);
+    border-color: var(--selected-border);
+    color: var(--text);
+  }
+
+  .tab-count {
+    margin-left: 5px;
+    color: var(--text-muted);
+  }
+
+  .tab.active .tab-count {
+    color: var(--accent);
+  }
+
+  /* Hint bar */
+  #hint-bar {
+    flex-shrink: 0;
+    padding: 8px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .hint-item kbd {
+    color: var(--text-dim);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  /* Routing overlay */
+  #overlay-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+  }
+
+  #overlay-backdrop.visible { display: block; }
+
+  #routing-overlay {
+    position: fixed;
+    z-index: 100;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    width: 340px;
+    overflow: hidden;
+  }
+
+  #overlay-input-wrap {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+
+  #overlay-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  #overlay-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    caret-color: var(--accent);
+  }
+
+  #autocomplete-list {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  #autocomplete-list::-webkit-scrollbar { width: 4px; }
+  #autocomplete-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .ac-item {
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+  }
+
+  .ac-item:hover,
+  .ac-item.ac-selected {
+    background: var(--selected-bg);
+    color: var(--text);
+  }
+
+  .ac-item .ac-match {
+    color: var(--accent);
+  }
+
+  .ac-empty {
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #3a1a1a;
+    border: 1px solid #7a3030;
+    color: #f5a0a0;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <h1>Gong Triage</h1>
+    <div id="tabs">
+      <button class="tab active" data-tab="unprocessed">Unprocessed<span class="tab-count" id="unprocessed-count">…</span></button>
+      <button class="tab" data-tab="processed">Processed<span class="tab-count" id="processed-count">0</span></button>
+    </div>
+  </div>
+
+  <div id="col-headers">
+    <div class="col-date">Date<span class="resize-handle" data-col="0"></span></div>
+    <div class="col-owner">Organizer<span class="resize-handle" data-col="1"></span></div>
+    <div class="col-title">Title<span class="resize-handle" data-col="2"></span></div>
+    <div class="col-brief">Summary<span class="resize-handle" data-col="3"></span></div>
+    <div class="col-size">Size</div>
+  </div>
+
+  <div id="list-container" tabindex="0">
+    <!-- rows injected here -->
+  </div>
+
+  <div id="empty-state">
+    <div id="empty-icon">&#10003;</div>
+    <div>All caught up. 0 calls remaining.</div>
+  </div>
+
+  <div id="hint-bar">
+    <span class="hint-item"><kbd>↑</kbd>/<kbd>↓</kbd> navigate</span>
+    <span class="hint-item hint-skip"><kbd>s</kbd> skip</span>
+    <span class="hint-item"><kbd>Enter</kbd> route</span>
+    <span class="hint-item"><kbd>u</kbd>/<kbd>p</kbd> switch tab</span>
+    <span class="hint-item"><kbd>Esc</kbd> cancel</span>
+  </div>
+</div>
+
+<!-- Routing overlay -->
+<div id="overlay-backdrop"></div>
+<div id="routing-overlay" style="display:none">
+  <div id="overlay-input-wrap">
+    <span id="overlay-label">route &rarr;</span>
+    <input id="overlay-input" type="text" placeholder="type to filter…" autocomplete="off" spellcheck="false">
+  </div>
+  <div id="autocomplete-list"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // -------------------------------------------------------------------------
+  // State
+  // -------------------------------------------------------------------------
+  let unprocessedCalls = [];
+  let processedCalls = [];
+  let calls = [];          // points to active tab's array
+  let customers = [];      // [string]
+  let cursor = 0;          // selected row index
+  let routingOpen = false;
+  let acIndex = 0;         // autocomplete selected index
+  let activeTab = 'unprocessed';
+
+  // -------------------------------------------------------------------------
+  // DOM refs
+  // -------------------------------------------------------------------------
+  const listContainer = document.getElementById('list-container');
+  const emptyState = document.getElementById('empty-state');
+  const overlayBackdrop = document.getElementById('overlay-backdrop');
+  const routingOverlay = document.getElementById('routing-overlay');
+  const overlayInput = document.getElementById('overlay-input');
+  const autocompleteList = document.getElementById('autocomplete-list');
+  const toast = document.getElementById('toast');
+
+  // -------------------------------------------------------------------------
+  // Data loading
+  // -------------------------------------------------------------------------
+  async function loadData() {
+    const [callsRes, processedRes, customersRes] = await Promise.all([
+      fetch('/api/calls'),
+      fetch('/api/processed'),
+      fetch('/api/customers'),
+    ]);
+    unprocessedCalls = await callsRes.json();
+    processedCalls = await processedRes.json();
+    customers = await customersRes.json();
+    calls = activeTab === 'unprocessed' ? unprocessedCalls : processedCalls;
+    cursor = Math.min(cursor, Math.max(0, calls.length - 1));
+    updateTabCounts();
+    render();
+    listContainer.focus();
+  }
+
+  function updateTabCounts() {
+    document.getElementById('unprocessed-count').textContent = unprocessedCalls.length;
+    document.getElementById('processed-count').textContent = processedCalls.length;
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    calls = activeTab === 'unprocessed' ? unprocessedCalls : processedCalls;
+    cursor = 0;
+    document.querySelectorAll('.tab').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    document.querySelector('.hint-skip').style.display = tab === 'unprocessed' ? '' : 'none';
+    render();
+    listContainer.focus();
+  }
+
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // -------------------------------------------------------------------------
+  // Rendering
+  // -------------------------------------------------------------------------
+  function formatSize(chars) {
+    if (chars >= 1000) return (chars / 1000).toFixed(1) + 'k';
+    return chars + 'c';
+  }
+
+  function formatDate(s) {
+    if (!s) return '';
+    return String(s).slice(0, 10);
+  }
+
+  function render() {
+    const isEmpty = calls.length === 0;
+    emptyState.classList.toggle('visible', isEmpty);
+    listContainer.style.display = isEmpty ? 'none' : '';
+
+    listContainer.innerHTML = '';
+    calls.forEach((call, i) => {
+      const row = document.createElement('div');
+      row.className = 'call-row' + (i === cursor ? ' selected' : '') +
+        (call.transcript_chars < 1000 ? ' dim' : '');
+      row.dataset.index = i;
+
+      row.innerHTML =
+        '<div class="col-date">' + esc(formatDate(call.call_ended_at)) + '</div>' +
+        '<div class="col-owner">' + esc(call.owner || '') + '</div>' +
+        '<div class="col-title">' + esc(call.call_title || '') + '</div>' +
+        '<div class="col-brief">' + esc(call.call_spotlight_brief || '') + '</div>' +
+        '<div class="col-size">' + esc(formatSize(call.transcript_chars || 0)) + '</div>';
+
+      row.addEventListener('click', () => {
+        cursor = i;
+        render();
+        listContainer.focus();
+      });
+      row.addEventListener('dblclick', () => {
+        cursor = i;
+        openRouting();
+      });
+
+      listContainer.appendChild(row);
+    });
+
+    scrollCursorIntoView();
+  }
+
+  function scrollCursorIntoView() {
+    const rows = listContainer.querySelectorAll('.call-row');
+    if (rows[cursor]) {
+      rows[cursor].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // -------------------------------------------------------------------------
+  // Browse mode keyboard
+  // -------------------------------------------------------------------------
+  // Global hotkeys — work even when list is hidden or empty
+  document.addEventListener('keydown', (e) => {
+    if (routingOpen) return;
+    // Ignore if focus is in an input/button (except listContainer itself)
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    switch (e.key) {
+      case 'p':
+        e.preventDefault();
+        switchTab('processed');
+        break;
+      case 'u':
+        e.preventDefault();
+        switchTab('unprocessed');
+        break;
+    }
+  });
+
+  listContainer.addEventListener('keydown', (e) => {
+    if (routingOpen) return;
+    if (calls.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        cursor = Math.min(cursor + 1, calls.length - 1);
+        render();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        cursor = Math.max(cursor - 1, 0);
+        render();
+        break;
+      case 's':
+        e.preventDefault();
+        doSkip();
+        break;
+      case 'Enter':
+        e.preventDefault();
+        openRouting();
+        break;
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Skip
+  // -------------------------------------------------------------------------
+  async function doSkip() {
+    if (calls.length === 0 || activeTab !== 'unprocessed') return;
+    const call = calls[cursor];
+    const removed = calls.splice(cursor, 1);
+    cursor = Math.min(cursor, calls.length - 1);
+    updateTabCounts();
+    render();
+    listContainer.focus();
+
+    try {
+      const res = await fetch('/api/skip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pkey_id: call.pkey_id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch (err) {
+      calls.splice(cursor, 0, ...removed);
+      updateTabCounts();
+      render();
+      showToast('Skip failed: ' + err.message);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Routing overlay
+  // -------------------------------------------------------------------------
+  function openRouting() {
+    if (calls.length === 0) return;
+    routingOpen = true;
+    overlayBackdrop.classList.add('visible');
+    routingOverlay.style.display = '';
+    positionOverlay();
+    overlayInput.value = '';
+    acIndex = 0;
+    renderAutocomplete('');
+    overlayInput.focus();
+  }
+
+  function closeRouting() {
+    routingOpen = false;
+    overlayBackdrop.classList.remove('visible');
+    routingOverlay.style.display = 'none';
+    listContainer.focus();
+  }
+
+  function positionOverlay() {
+    const rows = listContainer.querySelectorAll('.call-row');
+    const row = rows[cursor];
+    if (!row) return;
+
+    const rect = row.getBoundingClientRect();
+    const overlayH = 280; // approx max height
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    let top;
+    if (spaceBelow >= overlayH || spaceBelow > rect.top) {
+      top = rect.bottom + 2;
+    } else {
+      top = rect.top - overlayH - 2;
+    }
+
+    routingOverlay.style.top = Math.max(4, top) + 'px';
+    routingOverlay.style.left = Math.max(4, rect.left) + 'px';
+  }
+
+  overlayBackdrop.addEventListener('click', closeRouting);
+
+  overlayInput.addEventListener('input', () => {
+    acIndex = 0;
+    renderAutocomplete(overlayInput.value);
+  });
+
+  const CREATE_SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
+
+  function createItem(query) {
+    // Returns {name, create, valid} if query warrants a create option, else null
+    if (!query) return null;
+    const alreadyExists = customers.includes(query);
+    if (alreadyExists) return null;
+    return { name: query, create: true, valid: CREATE_SLUG_RE.test(query) };
+  }
+
+  overlayInput.addEventListener('keydown', (e) => {
+    const query = overlayInput.value;
+    const items = filteredCustomers(query);
+    const ci = createItem(query);
+    const totalItems = items.length + (ci ? 1 : 0);
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        acIndex = Math.min(acIndex + 1, totalItems - 1);
+        renderAutocomplete(query);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        acIndex = Math.max(acIndex - 1, 0);
+        renderAutocomplete(query);
+        break;
+      case 'Tab':
+      case 'Enter':
+        e.preventDefault();
+        if (acIndex < items.length && items.length > 0) {
+          doRoute(items[acIndex] || items[0], false);
+        } else if (ci && acIndex === items.length) {
+          if (ci.valid) doRoute(ci.name, true);
+        } else if (items.length > 0) {
+          doRoute(items[0], false);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        closeRouting();
+        break;
+    }
+  });
+
+  function filteredCustomers(query) {
+    if (!query) return customers;
+    const q = query.toLowerCase();
+    return customers.filter(c => c.toLowerCase().includes(q));
+  }
+
+  function renderAutocomplete(query) {
+    const items = filteredCustomers(query);
+    const ci = createItem(query);
+    autocompleteList.innerHTML = '';
+
+    if (items.length === 0 && !ci) {
+      const el = document.createElement('div');
+      el.className = 'ac-empty';
+      el.textContent = 'No matches';
+      autocompleteList.appendChild(el);
+      return;
+    }
+
+    items.forEach((name, i) => {
+      const el = document.createElement('div');
+      el.className = 'ac-item' + (i === acIndex ? ' ac-selected' : '');
+      el.innerHTML = highlightMatch(name, query);
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        doRoute(name, false);
+      });
+      autocompleteList.appendChild(el);
+    });
+
+    if (ci) {
+      const el = document.createElement('div');
+      const isSelected = acIndex === items.length;
+      el.className = 'ac-item ac-create' +
+        (isSelected ? ' ac-selected' : '') +
+        (ci.valid ? '' : ' ac-invalid');
+      el.textContent = (ci.valid ? '+ Create folder: ' : '✗ Invalid name: ') + ci.name;
+      if (ci.valid) {
+        el.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          doRoute(ci.name, true);
+        });
+      }
+      autocompleteList.appendChild(el);
+    }
+
+    // Scroll selected into view
+    const selected = autocompleteList.querySelector('.ac-selected');
+    if (selected) selected.scrollIntoView({ block: 'nearest' });
+  }
+
+  function highlightMatch(name, query) {
+    if (!query) return esc(name);
+    const idx = name.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return esc(name);
+    return esc(name.slice(0, idx)) +
+      '<span class="ac-match">' + esc(name.slice(idx, idx + query.length)) + '</span>' +
+      esc(name.slice(idx + query.length));
+  }
+
+  async function doRoute(destDir, create) {
+    if (calls.length === 0) return;
+    const call = calls[cursor];
+    closeRouting();
+
+    const removed = calls.splice(cursor, 1);
+    cursor = Math.min(cursor, calls.length - 1);
+    updateTabCounts();
+    render();
+    listContainer.focus();
+
+    try {
+      const res = await fetch('/api/route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pkey_id: call.pkey_id, dest_dir: destDir, create: !!create, source: activeTab }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error || res.statusText);
+      }
+    } catch (err) {
+      calls.splice(cursor, 0, ...removed);
+      updateTabCounts();
+      render();
+      showToast('Route failed: ' + err.message);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Toast
+  // -------------------------------------------------------------------------
+  let toastTimer = null;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+  }
+
+  // -------------------------------------------------------------------------
+  // Column resizing
+  // -------------------------------------------------------------------------
+  const MIN_COL = 40;
+  let colWidths = [90, 150, 0, 0, 55];
+
+  function initColWidths() {
+    const total = document.getElementById('col-headers').clientWidth;
+    const fixed = colWidths[0] + colWidths[1] + colWidths[4] + 40; // 40 = row padding
+    const flex = Math.max(200, total - fixed);
+    colWidths[2] = Math.floor(flex / 2.2);
+    colWidths[3] = flex - colWidths[2];
+    applyColWidths();
+  }
+
+  // On resize, re-fit the flex columns (title + brief) to the new available width
+  // while preserving any manual resizing the user did on fixed columns
+  function reflowColWidths() {
+    const total = document.getElementById('col-headers').clientWidth;
+    const fixed = colWidths[0] + colWidths[1] + colWidths[4] + 40;
+    const flex = Math.max(200, total - fixed);
+    const ratio = colWidths[2] / (colWidths[2] + colWidths[3]);
+    colWidths[2] = Math.floor(flex * ratio);
+    colWidths[3] = flex - colWidths[2];
+    applyColWidths();
+  }
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(reflowColWidths, 50);
+  });
+
+  function applyColWidths() {
+    document.documentElement.style.setProperty('--cols', colWidths.map(w => w + 'px').join(' '));
+  }
+
+  let dragState = null;
+
+  document.querySelectorAll('.resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const col = parseInt(handle.dataset.col);
+      dragState = { col, startX: e.clientX, startWidth: colWidths[col] };
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragState) return;
+    const delta = e.clientX - dragState.startX;
+    colWidths[dragState.col] = Math.max(MIN_COL, dragState.startWidth + delta);
+    applyColWidths();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragState) return;
+    document.querySelector('.resize-handle.dragging')?.classList.remove('dragging');
+    dragState = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+
+  // -------------------------------------------------------------------------
+  // Init
+  // -------------------------------------------------------------------------
+  initColWidths();
+  loadData();
+})();
+</script>
+</body>
+</html>
