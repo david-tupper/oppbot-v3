@@ -38,7 +38,7 @@ This creates `gong_owners.json` in the repo root (gitignored). Edit it to add yo
 }
 ```
 
-**Finding an owner ID:** Run this query in BigQuery, using any call you know they hosted:
+**Finding an owner ID:** Run this query in [BigQuery](https://console.cloud.google.com/bigquery?ws=!1m7!1m6!12m5!1m3!1ssolutions-engineering-248511!2sus-central1!3sda6760ae-64bd-49a6-b177-32e8d7bc39ac!2e1), using any call you know they hosted:
 
 ```sql
 SELECT owner_id, call_title, call_started_at
