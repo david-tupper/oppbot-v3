@@ -41,7 +41,7 @@ If no tech stack information is present in this transcript, return exactly: NO_T
 
 Return exactly this structure:
 
-#### {call_title} \u2014 {call_date} ([Gong]({gong_url}))
+### {call_title} \u2014 {call_date} ([Gong]({gong_url}))
 
 **{{Category}}**
 - fact
@@ -50,9 +50,11 @@ Return exactly this structure:
 - \u2753 ..."""
 
 SYNTHESIS_PROMPT_TEMPLATE = """\
-Based on the tech stack observations below, write a 2-3 sentence summary of this customer's
-tech stack. Be direct and specific \u2014 write as if briefing a salesperson before a call.
-Use present tense. Return ONLY the paragraph \u2014 no headers, no code fences.
+Based on the tech stack observations below, write a 2-3 sentence factual inventory of the
+technologies in use in this customer's environment and what they are used for. Focus on what
+is present and how it is used — not on trials, evaluations, timelines, or business context.
+Only include transitional details if a technology is actively being replaced or migrated away
+from. Use present tense. Return ONLY the paragraph — no headers, no code fences.
 
 Observations:
 {all_call_blocks}"""
@@ -106,7 +108,7 @@ def _parse_transcript_metadata(transcript: str) -> tuple[str, str, str]:
 
 def _extract_call_blocks(content: str) -> str:
     """Extract all #### call blocks from the file for synthesis input."""
-    blocks = re.findall(r"(?:^|\n)(####.+?)(?=\n---|\Z)", content, re.DOTALL)
+    blocks = re.findall(r"(?:^|\n)(###.+?)(?=\n---|\Z)", content, re.DOTALL)
     return "\n\n---\n\n".join(b.strip() for b in blocks)
 
 
