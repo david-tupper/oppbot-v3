@@ -8,6 +8,7 @@ Usage:
 import json
 import shutil
 import sys
+import threading
 from pathlib import Path
 
 try:
@@ -15,6 +16,18 @@ try:
 except ImportError:
     print("Flask is not installed. Run: pip install flask")
     sys.exit(1)
+
+try:
+    from tech_stack_update import update_tech_stack
+    TECH_STACK_AVAILABLE = True
+except ImportError:
+    TECH_STACK_AVAILABLE = False
+
+try:
+    from three_whys_update import update_3_whys
+    THREE_WHYS_AVAILABLE = True
+except ImportError:
+    THREE_WHYS_AVAILABLE = False
 
 CUSTOMERS_DIR = Path("/Users/davidtupper/customers")
 UNMATCHED_GONG_DIR = CUSTOMERS_DIR / "_unmatched" / "unprocessed" / "gong"
@@ -141,6 +154,16 @@ def api_route():
     dest_manifest["calls"] = list(dest_index.values())
     dest_manifest["total_calls"] = len(dest_manifest["calls"])
     save_manifest(dest_gong_dir, dest_manifest)
+
+    # Run enrichment in background so the UI doesn't hang on Claude API calls
+    customer_dir = CUSTOMERS_DIR / dest_dir
+    if TECH_STACK_AVAILABLE or THREE_WHYS_AVAILABLE:
+        def enrich():
+            if TECH_STACK_AVAILABLE:
+                update_tech_stack(dst_file, customer_dir)
+            if THREE_WHYS_AVAILABLE:
+                update_3_whys(dst_file, customer_dir)
+        threading.Thread(target=enrich, daemon=True).start()
 
     return jsonify({"ok": True})
 

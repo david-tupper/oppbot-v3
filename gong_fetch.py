@@ -6,6 +6,7 @@ Usage:
     python gong_fetch.py --sync
     python gong_fetch.py --sync --dry-run
     python gong_fetch.py --sync --since 2025-01-01
+    python gong_fetch.py --sync --since 2025-01-01 --until 2025-03-31
 
     # Manual fetch by title pattern (targeted use)
     python gong_fetch.py --account "Applied Research Associates"
@@ -28,6 +29,18 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+try:
+    from tech_stack_update import update_tech_stack
+    TECH_STACK_AVAILABLE = True
+except ImportError:
+    TECH_STACK_AVAILABLE = False
+
+try:
+    from three_whys_update import update_3_whys
+    THREE_WHYS_AVAILABLE = True
+except ImportError:
+    THREE_WHYS_AVAILABLE = False
 
 TABLE = "grafanalabs-data-marts.mrt_core.brk_gong_calls"
 
@@ -99,10 +112,11 @@ def cmd_schema(client):
         print(f"{row.ordinal_position:<5} {row.column_name:<40} {row.data_type}")
 
 
-def fetch_calls_by_owners(client, owner_ids, since, limit):
+def fetch_calls_by_owners(client, owner_ids, since, until, limit):
     from google.cloud import bigquery
 
     since_clause = "AND call_ended_at >= @since" if since else ""
+    until_clause = "AND call_ended_at <= @until" if until else ""
 
     sql = f"""
     SELECT DISTINCT
@@ -116,6 +130,7 @@ def fetch_calls_by_owners(client, owner_ids, since, limit):
     FROM `{TABLE}`
     WHERE owner_id IN UNNEST(@owner_ids)
       {since_clause}
+      {until_clause}
     ORDER BY call_ended_at DESC
     LIMIT @limit
     """
@@ -126,6 +141,8 @@ def fetch_calls_by_owners(client, owner_ids, since, limit):
     ]
     if since:
         params.append(bigquery.ScalarQueryParameter("since", "TIMESTAMP", since))
+    if until:
+        params.append(bigquery.ScalarQueryParameter("until", "TIMESTAMP", until))
 
     job_config = bigquery.QueryJobConfig(query_parameters=params)
     try:
@@ -135,13 +152,14 @@ def fetch_calls_by_owners(client, owner_ids, since, limit):
         sys.exit(1)
 
 
-def fetch_calls_by_title(client, patterns, since, limit):
+def fetch_calls_by_title(client, patterns, since, until, limit):
     from google.cloud import bigquery
 
     pattern_conditions = " OR ".join(
         f"REGEXP_CONTAINS(call_title, @p{i})" for i in range(len(patterns))
     )
     since_clause = "AND call_ended_at >= @since" if since else ""
+    until_clause = "AND call_ended_at <= @until" if until else ""
 
     sql = f"""
     SELECT DISTINCT
@@ -155,6 +173,7 @@ def fetch_calls_by_title(client, patterns, since, limit):
     FROM `{TABLE}`
     WHERE ({pattern_conditions})
       {since_clause}
+      {until_clause}
     ORDER BY call_ended_at DESC
     LIMIT @limit
     """
@@ -164,6 +183,8 @@ def fetch_calls_by_title(client, patterns, since, limit):
         params.append(bigquery.ScalarQueryParameter(f"p{i}", "STRING", f"(?i)\\b{re.escape(pattern)}\\b"))
     if since:
         params.append(bigquery.ScalarQueryParameter("since", "TIMESTAMP", since))
+    if until:
+        params.append(bigquery.ScalarQueryParameter("until", "TIMESTAMP", until))
 
     job_config = bigquery.QueryJobConfig(query_parameters=params)
     try:
@@ -374,7 +395,7 @@ def run_fetch(args):
     patterns = [p.strip() for p in args.title_pattern.split(",")] if args.title_pattern else [args.account]
     print(f"Searching call titles for: {patterns}")
 
-    rows = fetch_calls_by_title(client, patterns=patterns, since=args.since, limit=args.limit)
+    rows = fetch_calls_by_title(client, patterns=patterns, since=args.since, until=args.until, limit=args.limit)
 
     if not rows:
         print(f"\nNo calls found. Try adjusting --title-pattern.")
@@ -425,7 +446,8 @@ def run_fetch(args):
             md_content = f"# Error rendering call {pkey_id}\n\nRaw:\n```\n{str(row.transcript_json)[:2000]}\n```"
 
         filename = unique_filename(gong_dir, filename)
-        (gong_dir / filename).write_text(md_content, encoding="utf-8")
+        filepath = gong_dir / filename
+        filepath.write_text(md_content, encoding="utf-8")
         calls_index[pkey_id] = {
             "pkey_id": pkey_id,
             "call_title": row.call_title or "",
@@ -437,6 +459,10 @@ def run_fetch(args):
         }
         new_count += 1
         print(f"  Wrote: {filename}")
+        if TECH_STACK_AVAILABLE:
+            update_tech_stack(filepath, account_dir)
+        if THREE_WHYS_AVAILABLE:
+            update_3_whys(filepath, account_dir)
 
     manifest = {
         "account": args.account,
@@ -464,7 +490,7 @@ def run_sync(args):
         print(f"No --since provided; defaulting to 30 days ago ({since})")
 
     print(f"Fetching calls for: {', '.join(OWNER_IDS.keys())}")
-    rows = fetch_calls_by_owners(client, owner_ids, since=since, limit=args.limit)
+    rows = fetch_calls_by_owners(client, owner_ids, since=since, until=args.until, limit=args.limit)
 
     if not rows:
         print("No calls found.")
@@ -563,6 +589,11 @@ def run_sync(args):
             }
             processed_ids[pkey_id] = date_str
             print(f"  [{dest}] {filename}  —  {row.call_title or 'Untitled'}")
+            is_matched = not dest.startswith("_unmatched")
+            if TECH_STACK_AVAILABLE and is_matched:
+                update_tech_stack(filepath, customers_dir / dest)
+            if THREE_WHYS_AVAILABLE and is_matched:
+                update_3_whys(filepath, customers_dir / dest)
 
         manifest = {
             "account": dest,
@@ -658,7 +689,8 @@ def main():
     parser.add_argument("--sync", action="store_true", help="Fetch new calls by owner and auto-route to customer dirs")
     parser.add_argument("--account", default=None, help="Manually fetch calls for a specific customer dir by title pattern")
     parser.add_argument("--title-pattern", default=None, help="Comma-separated title patterns for --account mode (e.g. 'Applied Research Associates,ARA')")
-    parser.add_argument("--since", default=None, help="ISO date (YYYY-MM-DD) to filter call_ended_at")
+    parser.add_argument("--since", default=None, help="ISO date (YYYY-MM-DD) — lower bound on call_ended_at")
+    parser.add_argument("--until", default=None, help="ISO date (YYYY-MM-DD) — upper bound on call_ended_at")
     parser.add_argument("--limit", type=int, default=200, help="Max calls to fetch (default: 200)")
     parser.add_argument("--dry-run", action="store_true", help="Print what would be written without writing")
     parser.add_argument("--force", action="store_true", help="Re-process already-synced calls")
@@ -697,6 +729,11 @@ def main():
             datetime.strptime(args.since, "%Y-%m-%d")
         except ValueError:
             parser.error(f"--since must be in YYYY-MM-DD format, got: {args.since}")
+    if args.until:
+        try:
+            datetime.strptime(args.until, "%Y-%m-%d")
+        except ValueError:
+            parser.error(f"--until must be in YYYY-MM-DD format, got: {args.until}")
 
     if args.account:
         run_fetch(args)

@@ -1,71 +1,148 @@
 # oppbot-v3
 
-A local tool for syncing Gong call transcripts from BigQuery and triaging unmatched calls into customer folders.
+A local tool for syncing Gong call transcripts from BigQuery, auto-routing them into customer folders, and enriching each account with tech stack and sales qualification data.
 
 ---
 
-## What it does
+## Requirements
 
-1. **Syncs Gong calls from BigQuery** (`gong_fetch.py`) — pulls call transcripts for a defined set of AEs by owner ID, auto-routes them into customer directories, and drops anything it can't match into `_unmatched/unprocessed/`.
-
-2. **Runs a triage UI** (`triage_server.py` + `triage.html`) — a local web app for reviewing unmatched calls, skipping irrelevant ones, and routing them to the right customer folder.
+- Python 3.11+
+- `google-cloud-bigquery` — BigQuery client
+- `flask` — triage server
+- GCP credentials: `gcloud auth application-default login`
 
 ---
 
-## Directory structure
+## Setup
+
+### 1. GCP authentication
+
+```bash
+gcloud auth application-default login
+```
+
+### 2. Add your team's Gong owner IDs
+
+Open `gong_fetch.py` and populate `OWNER_IDS` with the people whose calls you want to pull:
+
+```python
+OWNER_IDS = {
+    "Jane Smith": "1234567890123456789",
+    "John Doe":   "9876543210987654321",
+}
+```
+
+**Finding an owner ID:** Run this query in BigQuery, using any call you know they hosted:
+
+```sql
+SELECT owner_id, call_title, call_started_at
+FROM `grafanalabs-data-marts.mrt_core.brk_gong_calls`
+WHERE DATE(call_started_at) = '2025-06-15'
+  AND call_title = 'Grafana <> Acme Corp'
+LIMIT 10
+```
+
+Copy the `owner_id` from the result. The dict key is a display label used in transcript filenames — it doesn't need to match anything in the system.
+
+### 3. Add the local hostname (one time)
+
+```bash
+echo "127.0.0.1 gong-triage.local" | sudo tee -a /etc/hosts
+```
+
+---
+
+## Quick start
+
+**Daily workflow — sync new calls and triage anything unmatched:**
+
+```bash
+python3 gong_fetch.py --sync    # pull last 30 days, auto-route to customer dirs
+./triage.sh                      # review unmatched calls in browser
+```
+
+`triage.sh` opens `http://gong-triage.local` and prompts for `sudo` once per boot to set up port forwarding (80 → 5555). Press Ctrl+C to stop.
+
+---
+
+## How it works
+
+`gong_fetch.py` pulls call transcripts from BigQuery and routes them to customer directories. Anything it can't match goes to `_unmatched/unprocessed/` for manual triage.
+
+```
+gong_fetch.py
+│
+├── ① Fetch
+│   ├── --account  →  fetch_calls_by_title()   (BigQuery, by title pattern)
+│   └── --sync     →  fetch_calls_by_owners()  (BigQuery, by owner IDs)
+│
+├── ② Filter
+│   ├── phone call?            → skip
+│   └── already processed?     → skip  (bypass with --force)
+│
+├── ③ Route
+│   ├── --account              → customer dir (specified by flag)
+│   └── --sync → detect_customer()
+│       ├── 1. routing aliases (gong_routing.json)
+│       ├── 2. auto-derived title case (ventura-foods → Ventura Foods)
+│       ├── 3. raw dir name word-boundary match
+│       ├── matched            → customer dir
+│       └── no match           → _unmatched/unprocessed/
+│                                   └── triage UI (triage_server.py)
+│                                       ├── route to customer dir → enrichment runs (background)
+│                                       └── skip → _unmatched/processed/
+│
+├── ④ Write
+│   ├── format_call_md()       render transcript → markdown
+│   ├── write YYYY-MM-DD_title.md → customer/gong/
+│   └── update manifest.json + .gong_sync.json
+│
+└── ⑤ Enrich  (matched customers only)
+    ├── tech_stack_update.py   → merges tech_stack.yaml
+    └── three_whys_update.py
+        ├── Claude call 1      extract Why Grafana / Why Now / Why Anything
+        ├── append call blocks → 3_whys_summary.md
+        ├── update 3_whys.json   (bullets + quotes per Why)
+        ├── Claude call 2      regenerate synthesis across all calls
+        └── update synthesis lines in 3_whys_summary.md
+```
+
+**Auto-routing strategies** (tried in order for `--sync`):
+
+1. **Routing aliases** — word-boundary match against patterns in `gong_routing.json`
+2. **Auto-derived pattern** — converts dir name to title case (e.g. `ventura-foods` → `Ventura Foods`)
+3. **Raw dir name** — word-boundary match on the directory name itself
+
+Calls that don't match any strategy go to `_unmatched/unprocessed/`.
+
+---
+
+## Directory layout
 
 ```
 /Users/davidtupper/customers/
   <customer-name>/
     gong/
-      manifest.json         # index of all calls for this customer
-      YYYY-MM-DD_<title>.md # transcript files
-    gong_routing.json       # optional: routing aliases for this customer
+      manifest.json           # index of all calls for this customer
+      YYYY-MM-DD_<title>.md   # transcript files
+    gong_routing.json         # optional: routing aliases for this customer
+    tech_stack.yaml           # auto-enriched from transcripts
+    3_whys_summary.md         # human-readable Why Grafana / Why Now / Why Anything
+    3_whys.json               # structured sidecar for downstream tools
   _unmatched/
-    unprocessed/gong/       # calls with no customer match (pending triage)
-    processed/gong/         # calls that were skipped in triage
+    unprocessed/gong/         # calls with no customer match (pending triage)
+    processed/gong/           # calls that were skipped in triage
 ```
 
 ---
 
-## Usage
+## Triage UI
 
-### Triage UI (recommended)
 ```bash
 ./triage.sh
 ```
-Opens `http://gong-triage.local` in your browser. Prompts for `sudo` once per boot to set up port forwarding (80 → 5555). Press Ctrl+C to stop.
 
-**One-time setup** (adds the local hostname):
-```bash
-echo "127.0.0.1 gong-triage.local" | sudo tee -a /etc/hosts
-```
-
-### Daily sync (runs automatically at 12pm PT via launchd)
-```bash
-python3 gong_fetch.py --sync
-python3 gong_fetch.py --sync --since 2025-01-01   # backfill from a date
-python3 gong_fetch.py --sync --dry-run             # preview without writing
-```
-
-Defaults to the last 30 days when `--since` is omitted. Warns if the result count hits `--limit` (default 200), which may indicate truncation.
-
-### Manual fetch for a specific account
-```bash
-python3 gong_fetch.py --account "<customer-name>"
-python3 gong_fetch.py --account "<customer-name>" --title-pattern "<title-of-call>"
-```
-
-### Routing config management
-```bash
-python3 gong_fetch.py --init-routing                        # scaffold gong_routing.json for all customer dirs
-python3 gong_fetch.py --add-alias grafana-labs "Grafana"   # add a routing alias
-python3 gong_fetch.py --show-routing                        # print the full routing table
-```
-
----
-
-## Triage UI keyboard shortcuts
+Opens `http://gong-triage.local`. Use the keyboard to move fast:
 
 | Key | Action |
 |-----|--------|
@@ -82,15 +159,37 @@ The **Processed tab** shows calls that were skipped. You can re-route them to a 
 
 ---
 
-## Auto-routing logic
+## Auto-enrichment
 
-When syncing, `gong_fetch.py` tries to match each call title to a customer directory using three strategies in order:
+After each transcript is written, `gong_fetch.py` automatically runs both enrichment scripts on matched customers. The same enrichment can be triggered on demand via the `/update-tech-stack` and `/update-3-whys` Claude commands.
 
-1. **Routing aliases** — word-boundary match against patterns in `gong_routing.json`
-2. **Auto-derived pattern** — converts dir name to title case (e.g. `ventura-foods` → `Ventura Foods`)
-3. **Raw dir name** — word-boundary match on the directory name itself
+### Tech stack
 
-Calls that don't match any strategy go to `_unmatched/unprocessed/`.
+Calls `tech_stack_update.py` to extract tech facts and merge them into `tech_stack.yaml` in the customer's root directory.
+
+**Reset and reprocess from scratch:**
+
+```bash
+rm ~/customers/<customer-name>/tech_stack.yaml
+cd ~/customers/<customer-name>
+/update-tech-stack    # scans all .md files in ./gong/ and rebuilds from blank template
+```
+
+### 3 Whys
+
+Calls `three_whys_update.py` to extract sales qualification evidence and append it to two files in the customer's root directory:
+
+- **`3_whys_summary.md`** — human-readable, organised into `## Why Grafana?`, `## Why Now?`, and `## Why Anything?` sections. Each call gets its own `####` block with bullets and verbatim quotes. A synthesis line at the top of each section is regenerated on every new call to summarise cumulative signal.
+- **`3_whys.json`** — structured sidecar with the same data (bullets, quotes, synthesis) in clean JSON for downstream tools.
+
+**Reset and reprocess from scratch:**
+
+```bash
+rm ~/customers/<customer-name>/3_whys_summary.md ~/customers/<customer-name>/3_whys.json
+for f in ~/customers/<customer-name>/gong/*.md; do
+  python3 /path/to/three_whys_update.py --transcript "$f" --customer-dir ~/customers/<customer-name>
+done
+```
 
 ---
 
@@ -118,37 +217,47 @@ launchctl load ~/Library/LaunchAgents/com.davidtupper.gongsync.plist
 
 ---
 
-## Setup: finding your Gong owner IDs
+## CLI reference
 
-Before running a sync, populate `OWNER_IDS` in `gong_fetch.py` with the people whose calls you want to pull.
+### `--sync` — daily sync by owner
 
-1. **Find a call you know they organised.** Any call where they were the host works — you just need the exact title and date.
-
-2. **Run this query in BigQuery** (substituting the title and date):
-
-```sql
-SELECT owner_id, call_title, call_started_at
-FROM `grafanalabs-data-marts.mrt_core.brk_gong_calls`
-WHERE DATE(call_started_at) = '2025-06-15'
-  AND call_title = 'Grafana <> Acme Corp'
-LIMIT 10
+```bash
+python3 gong_fetch.py --sync
+python3 gong_fetch.py --sync --since 2025-01-01                        # backfill from a date
+python3 gong_fetch.py --sync --since 2025-01-01 --until 2025-03-31    # specific window
+python3 gong_fetch.py --sync --dry-run                                 # preview without writing
+python3 gong_fetch.py --sync --force                                   # re-process already-synced calls
+python3 gong_fetch.py --sync --limit 500                               # raise the fetch cap (default: 200)
 ```
 
-3. **Copy the `owner_id`** from the result and add it to the dict:
+Defaults to the last 30 days when `--since` is omitted. Warns if the result count hits `--limit`, which may indicate truncation.
 
-```python
-OWNER_IDS = {
-    "Jane Smith": "1234567890123456789",
-}
+### `--account` — manual fetch for a specific account
+
+```bash
+python3 gong_fetch.py --account "<customer-name>"
+python3 gong_fetch.py --account "<customer-name>" --title-pattern "Acme,Acme Corp"
+python3 gong_fetch.py --account "<customer-name>" --since 2025-01-01 --until 2025-06-30
+python3 gong_fetch.py --account "<customer-name>" --dry-run
+python3 gong_fetch.py --account "<customer-name>" --force
 ```
 
-The key is just a display label used in transcript filenames — it doesn't need to match anything in the system.
+### Schema inspection
 
----
+```bash
+python3 gong_fetch.py --schema    # print all columns in brk_gong_calls
+```
 
-## Requirements
+### Custom customers directory
 
-- Python 3.11+
-- `google-cloud-bigquery` — BigQuery client
-- `flask` — triage server
-- GCP credentials: `gcloud auth application-default login`
+```bash
+python3 gong_fetch.py --sync --customers-dir /path/to/customers
+```
+
+### Routing config management
+
+```bash
+python3 gong_fetch.py --init-routing                        # scaffold gong_routing.json for all customer dirs
+python3 gong_fetch.py --add-alias grafana-labs "Grafana"   # add a routing alias
+python3 gong_fetch.py --show-routing                        # print the full routing table
+```
