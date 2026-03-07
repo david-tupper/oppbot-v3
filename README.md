@@ -136,13 +136,21 @@ Calls that don't match any strategy go to `_unmatched/unprocessed/`.
 
 ---
 
-## Triage UI
+## oppbot UI
 
 ```bash
 ./triage.sh
 ```
 
-Opens `http://oppbot.local`. Use the keyboard to move fast:
+Opens `http://oppbot.local`. Three views, navigable by hotkey:
+
+| Key | View |
+|-----|------|
+| `1` | Triage — route unmatched calls |
+| `2` | Tech Stack — browse `tech_stack.md` per customer |
+| `3` | 3 Whys — browse `3_whys_summary.md` per customer |
+
+### Triage view
 
 | Key | Action |
 |-----|--------|
@@ -156,6 +164,17 @@ Opens `http://oppbot.local`. Use the keyboard to move fast:
 In the routing overlay, type to filter customer folders. If no match exists, a **+ Create folder** option appears for valid kebab-case names (`^[a-z0-9][a-z0-9-]*$`). Selecting it creates the folder and routes the call in one step.
 
 The **Processed tab** shows calls that were skipped. You can re-route them to a customer folder from there if you skipped something by mistake.
+
+The **Triage nav button** shows a count badge when there are unprocessed calls waiting.
+
+### Tech Stack / 3 Whys views
+
+Both views show a filterable customer list on the left and rendered markdown on the right. The file path appears above the content and is clickable — it opens the file in your default editor.
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate customer list |
+| Type in filter box | Narrow the customer list |
 
 ---
 
@@ -179,7 +198,7 @@ cd ~/customers/<customer-name>
 
 Calls `three_whys_update.py` to extract sales qualification evidence and append it to two files in the customer's root directory:
 
-- **`3_whys_summary.md`** — human-readable, organised into `## Why Grafana?`, `## Why Now?`, and `## Why Anything?` sections. Each call gets its own `####` block with bullets and verbatim quotes. A synthesis line at the top of each section is regenerated on every new call to summarise cumulative signal.
+- **`3_whys_summary.md`** — human-readable, organised into `## Why Grafana?`, `## Why Now?`, and `## Why Anything?` sections. Each call gets its own `####` block with `##### Notes` (bullet points) and `##### Quotes` (verbatim customer quotes as bullets). A synthesis line at the top of each section is regenerated on every new call to summarise cumulative signal.
 - **`3_whys.json`** — structured sidecar with the same data (bullets, quotes, synthesis) in clean JSON for downstream tools.
 
 **Reset and reprocess from scratch:**
