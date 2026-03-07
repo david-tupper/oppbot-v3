@@ -724,7 +724,7 @@ def main():
     parser.add_argument("--title-pattern", default=None, help="Comma-separated title patterns for --account mode (e.g. 'Applied Research Associates,ARA')")
     parser.add_argument("--since", default=None, help="ISO date (YYYY-MM-DD) — lower bound on call_ended_at")
     parser.add_argument("--until", default=None, help="ISO date (YYYY-MM-DD) — upper bound on call_ended_at")
-    parser.add_argument("--limit", type=int, default=200, help="Max calls to fetch (default: 200)")
+    parser.add_argument("--limit", type=int, default=1000, help="Max calls to fetch (default: 1000)")
     parser.add_argument("--dry-run", action="store_true", help="Print what would be written without writing")
     parser.add_argument("--force", action="store_true", help="Re-process already-synced calls")
     parser.add_argument(

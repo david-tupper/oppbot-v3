@@ -252,7 +252,7 @@ python3 gong_fetch.py --sync --since 2025-01-01                        # backfil
 python3 gong_fetch.py --sync --since 2025-01-01 --until 2025-03-31    # specific window
 python3 gong_fetch.py --sync --dry-run                                 # preview without writing
 python3 gong_fetch.py --sync --force                                   # re-process already-synced calls
-python3 gong_fetch.py --sync --limit 500                               # raise the fetch cap (default: 200)
+python3 gong_fetch.py --sync --limit 500                               # override the fetch cap (default: 1000)
 ```
 
 Defaults to the last 30 days when `--since` is omitted. Warns if the result count hits `--limit`, which may indicate truncation.
