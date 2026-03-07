@@ -1,5 +1,5 @@
 """
-tech_stack_update.py — Enrich a customer's tech_stack.yaml from a Gong transcript.
+tech_stack_update.py — Enrich a customer's tech_stack.md from a Gong transcript.
 
 Usage:
     python tech_stack_update.py --transcript path/to/call.md --customer-dir path/to/customer/
@@ -7,94 +7,55 @@ Usage:
 """
 
 import argparse
+import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
-TECH_STACK_TEMPLATE = """\
-customer:
-environment_profile:
-  hosting:
-    primary: # e.g. VMware vSphere, AWS EC2, bare metal
-    secondary: # e.g. Kubernetes (~10% of workloads)
-    also: # e.g. a few remaining physical servers
-  platform_bias: # e.g. Microsoft-heavy enterprise stack, Java/Linux shop
-  databases:
-    primary: # e.g. Microsoft SQL Server, PostgreSQL, Oracle
-    secondary:
-      - # e.g. MySQL
-      - # e.g. Redis
-    analytics_platforms:
-      - # e.g. Snowflake
-      - # e.g. Databricks
-  applications:
-    nature: # e.g. Mostly COTS vendor apps with light customization, or custom microservices
-    examples_named:
-      - # App 1
-      - # App 2
-    access_constraints:
-      - # e.g. Many apps are web-based; deep code-level instrumentation not possible
-      - # e.g. Prefer visibility without needing application source code
-  batch_and_workflows:
-    critical_process: # e.g. Nightly end-of-day batch chain that closes daily trades
-    implementation: # e.g. In-house Python scripts with cron orchestration
-    monitoring_need: # e.g. Track step completion times, detect SLA breach, cascade impact
-  observability_current_state:
-    monitoring_tool_outgrown: # e.g. ManageEngine, Nagios, Datadog — what they're replacing/augmenting
-    logging_security:
-      primary: # e.g. Splunk for security
-      secondary: # e.g. Elasticsearch, lightly used
-  observability_goal_state:
-    priorities:
-      - # Priority 1 — e.g. Correlate end-user experience → app → DB → infra
-      - # Priority 2 — e.g. Fast onboarding across acquisitions
-      - # Priority 3
-demo_app_requirements:
-  must_show:
-    - # e.g. Web UI user journey + login + key transaction
-    - # e.g. Backend API with distributed traces
-    - # e.g. Database dependency with SQL Server
-    - # e.g. Nightly batch workflow with multi-step spans
-  nice_to_show:
-    - # Nice-to-have 1
-    - # Nice-to-have 2
-  avoid_overemphasis:
-    - # e.g. Deep Kubernetes-first demo
-    - # e.g. AI-first pitch if customer cares more about correlation
-"""
+EXTRACTION_SYSTEM_PROMPT = """\
+You are a technical intelligence extractor. Extract tech stack observations from a Gong
+call transcript. Return only a structured markdown block — no prose preamble, no code fences."""
 
-SYSTEM_PROMPT = """\
-You are a technical intelligence extractor. Your job is to update a customer tech_stack.yaml \
-by extracting facts from a Gong call transcript and merging them according to strict rules.
-
-You must return ONLY the complete updated YAML — no prose, no markdown fences, no explanation.
-"""
-
-USER_PROMPT_TEMPLATE = """\
-## Current tech_stack.yaml
-
-{current_yaml}
-
+EXTRACTION_USER_PROMPT_TEMPLATE = """\
 ## Transcript
-
 {transcript}
 
+## Call metadata
+Title: {call_title}
+Date: {call_date}
+Gong URL: {gong_url}
+
 ## Instructions
+Extract all tech stack facts mentioned or clearly implied in this transcript.
+Organize them into whatever categories best fit what you found (e.g. Hosting, Databases,
+Languages/Frameworks, Observability, Applications, Security, Networking, etc.).
+Only include categories where you have something concrete to say.
+For each category, write 1-3 specific fact bullets.
 
-Extract tech stack facts from the transcript and merge them into the YAML above using these rules:
+Also include an "Open questions" category for:
+- \u2753 Anything unclear that warrants a follow-up question
+- \u26a0\ufe0f Any apparent conflict with what you know
 
-- **Blank field** (value is a `# e.g. ...` comment or empty): populate with the extracted value
-- **Field has a value**: enrich if the transcript adds specificity (e.g. "SQL Server" → "SQL Server 2019"); \
-do NOT overwrite with a less specific value
-- **Contradiction** (transcript says something different than what's recorded): keep existing value AND add \
-`# CONFLICT: transcript says "[new value]" — verify` as an inline comment on the same line
-- **Ambiguous info** (transcript hints at something but is unclear): add \
-`# UNCLEAR — ask: [specific follow-up question]` as an inline comment
-- **New list items** (secondary databases, analytics platforms, must_show, etc.): append to the list if not \
-already present
-- If the transcript contains no relevant tech stack information, return the YAML unchanged
+If there are no open questions, omit that category.
+If no tech stack information is present in this transcript, return exactly: NO_TECH_FACTS
 
-Return ONLY the complete updated YAML. No prose. No markdown code fences.
-"""
+Return exactly this structure:
+
+#### {call_title} \u2014 {call_date} ([Gong]({gong_url}))
+
+**{{Category}}**
+- fact
+
+**Open questions**
+- \u2753 ..."""
+
+SYNTHESIS_PROMPT_TEMPLATE = """\
+Based on the tech stack observations below, write a 2-3 sentence summary of this customer's
+tech stack. Be direct and specific \u2014 write as if briefing a salesperson before a call.
+Use present tense. Return ONLY the paragraph \u2014 no headers, no code fences.
+
+Observations:
+{all_call_blocks}"""
 
 
 def get_anthropic_client():
@@ -121,23 +82,52 @@ def get_anthropic_client():
         return None
 
 
-def _diff_summary(old_yaml: str, new_yaml: str) -> list[str]:
-    """Return a list of human-readable change descriptions."""
-    old_lines = set(old_yaml.splitlines())
-    new_lines = set(new_yaml.splitlines())
-    added = [l.strip() for l in (new_lines - old_lines) if l.strip() and not l.strip().startswith("#")]
-    removed = [l.strip() for l in (old_lines - new_lines) if l.strip() and not l.strip().startswith("#")]
-    changes = []
-    for line in added:
-        changes.append(f"  + {line}")
-    for line in removed:
-        changes.append(f"  - {line}")
-    return changes
+def _init_tech_stack(name: str) -> str:
+    return f"# Tech Stack \u2014 {name}\n"
+
+
+def _parse_transcript_metadata(transcript: str) -> tuple[str, str, str]:
+    """Parse call title, date, and Gong URL from a transcript markdown file."""
+    title_match = re.search(r"^#\s+(.+)$", transcript, re.MULTILINE)
+    call_title = title_match.group(1).strip() if title_match else "Unknown Call"
+
+    date_match = re.search(r"\|\s*\*\*Date\*\*\s*\|\s*(\S+)\s*\|", transcript)
+    call_date = date_match.group(1).strip() if date_match else ""
+
+    url_match = re.search(r"\|\s*\*\*Gong URL\*\*\s*\|\s*\[([^\]]+)\]\(([^\)]+)\)", transcript)
+    if url_match:
+        gong_url = url_match.group(2).strip()
+    else:
+        url_match2 = re.search(r"\|\s*\*\*Gong URL\*\*\s*\|\s*(https?://\S+)\s*\|", transcript)
+        gong_url = url_match2.group(1).strip() if url_match2 else ""
+
+    return call_title, call_date, gong_url
+
+
+def _extract_call_blocks(content: str) -> str:
+    """Extract all #### call blocks from the file for synthesis input."""
+    blocks = re.findall(r"(?:^|\n)(####.+?)(?=\n---|\Z)", content, re.DOTALL)
+    return "\n\n---\n\n".join(b.strip() for b in blocks)
+
+
+def _update_summary_line(content: str, summary_text: str, date_str: str) -> str:
+    """Insert or replace the > **Summary** line near the top of the file."""
+    summary_line = f"\n> **Summary ({date_str}):** {summary_text}\n"
+    if re.search(r"^> \*\*Summary", content, re.MULTILINE):
+        return re.sub(
+            r"^> \*\*Summary[^\n]*$",
+            summary_line.strip(),
+            content,
+            flags=re.MULTILINE,
+        )
+    # Insert after the first heading line
+    return re.sub(r"(^# .+\n)", f"\\1{summary_line}", content, count=1)
 
 
 def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool = False) -> bool:
     """
-    Enrich customer_dir/tech_stack.yaml from transcript_path using Claude.
+    Extract tech stack facts from transcript_path and append a per-call block to
+    customer_dir/tech_stack.md. Regenerates the summary line on each new call.
 
     Returns True if the file was written (or would be in dry-run), False on skip/error.
     """
@@ -151,50 +141,76 @@ def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool =
         print(f"WARNING: Could not read transcript {transcript_path}: {e}", file=sys.stderr)
         return False
 
-    tech_stack_path = customer_dir / "tech_stack.yaml"
+    call_title, call_date, gong_url = _parse_transcript_metadata(transcript)
+
+    tech_stack_path = customer_dir / "tech_stack.md"
     if tech_stack_path.exists():
         try:
-            current_yaml = tech_stack_path.read_text(encoding="utf-8")
+            current_content = tech_stack_path.read_text(encoding="utf-8")
         except Exception as e:
             print(f"WARNING: Could not read {tech_stack_path}: {e}", file=sys.stderr)
             return False
     else:
-        current_yaml = TECH_STACK_TEMPLATE
+        current_content = _init_tech_stack(customer_dir.name)
 
-    user_prompt = USER_PROMPT_TEMPLATE.format(
-        current_yaml=current_yaml,
+    # Duplicate guard
+    if call_title in current_content or transcript_path.name in current_content:
+        print(f"  [tech_stack] Skipping {transcript_path.name} — already present in tech_stack.md")
+        return False
+
+    # --- Call 1: extract per-call block ---
+    user_prompt = EXTRACTION_USER_PROMPT_TEMPLATE.format(
         transcript=transcript,
+        call_title=call_title,
+        call_date=call_date,
+        gong_url=gong_url,
     )
-
     try:
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
-            system=SYSTEM_PROMPT,
+            system=EXTRACTION_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        updated_yaml = response.content[0].text.strip()
+        extracted_block = response.content[0].text.strip()
     except Exception as e:
         print(f"WARNING: Claude API call failed for {transcript_path.name}: {e}", file=sys.stderr)
         return False
 
-    changes = _diff_summary(current_yaml, updated_yaml)
-
-    if not changes:
-        print(f"  [tech_stack] No changes from {transcript_path.name}")
+    if extracted_block == "NO_TECH_FACTS":
+        print(f"  [tech_stack] No tech facts found in {transcript_path.name} — skipping")
         return False
 
     if dry_run:
-        print(f"  [tech_stack] DRY RUN — changes from {transcript_path.name}:")
-        for line in changes:
-            print(f"    {line}")
+        print(f"  [tech_stack] DRY RUN — extracted block from {transcript_path.name}:")
+        print()
+        print(extracted_block)
         return True
 
+    # Append block to content (separated by ---)
+    updated_content = current_content.rstrip() + "\n\n---\n\n" + extracted_block + "\n"
+
+    # --- Call 2: regenerate summary ---
+    all_blocks = _extract_call_blocks(updated_content)
+    synthesis_prompt = SYNTHESIS_PROMPT_TEMPLATE.format(all_call_blocks=all_blocks)
     try:
-        tech_stack_path.write_text(updated_yaml, encoding="utf-8")
-        print(f"  [tech_stack] Updated {tech_stack_path} from {transcript_path.name} ({len(changes)} change(s))")
-        for line in changes:
-            print(f"    {line}")
+        synthesis_response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=512,
+            messages=[{"role": "user", "content": synthesis_prompt}],
+        )
+        summary_text = synthesis_response.content[0].text.strip()
+    except Exception as e:
+        print(f"WARNING: Synthesis generation failed: {e}", file=sys.stderr)
+        summary_text = ""
+
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if summary_text:
+        updated_content = _update_summary_line(updated_content, summary_text, date_str)
+
+    try:
+        tech_stack_path.write_text(updated_content, encoding="utf-8")
+        print(f"  [tech_stack] Updated {tech_stack_path} from {transcript_path.name}")
         return True
     except Exception as e:
         print(f"WARNING: Could not write {tech_stack_path}: {e}", file=sys.stderr)
@@ -203,10 +219,10 @@ def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool =
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Enrich a customer's tech_stack.yaml from a Gong transcript using Claude."
+        description="Enrich a customer's tech_stack.md from a Gong transcript using Claude."
     )
     parser.add_argument("--transcript", required=True, help="Path to the transcript .md file")
-    parser.add_argument("--customer-dir", required=True, help="Path to the customer directory (where tech_stack.yaml lives)")
+    parser.add_argument("--customer-dir", required=True, help="Path to the customer directory (where tech_stack.md lives)")
     parser.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
     args = parser.parse_args()
 

@@ -98,7 +98,7 @@ gong_fetch.py
 │   └── update manifest.json + .gong_sync.json
 │
 └── ⑤ Enrich  (matched customers only)
-    ├── tech_stack_update.py   → merges tech_stack.yaml
+    ├── tech_stack_update.py   → appends per-call blocks to tech_stack.md
     └── three_whys_update.py
         ├── Claude call 1      extract Why Grafana / Why Now / Why Anything
         ├── append call blocks → 3_whys_summary.md
@@ -126,7 +126,7 @@ Calls that don't match any strategy go to `_unmatched/unprocessed/`.
       manifest.json           # index of all calls for this customer
       YYYY-MM-DD_<title>.md   # transcript files
     gong_routing.json         # optional: routing aliases for this customer
-    tech_stack.yaml           # auto-enriched from transcripts
+    tech_stack.md             # auto-enriched from transcripts
     3_whys_summary.md         # human-readable Why Grafana / Why Now / Why Anything
     3_whys.json               # structured sidecar for downstream tools
   _unmatched/
@@ -165,14 +165,14 @@ After each transcript is written, `gong_fetch.py` automatically runs both enrich
 
 ### Tech stack
 
-Calls `tech_stack_update.py` to extract tech facts and merge them into `tech_stack.yaml` in the customer's root directory.
+Calls `tech_stack_update.py` to extract tech facts and append per-call blocks to `tech_stack.md` in the customer's root directory. A synthesis paragraph at the top of the file is regenerated on each new call.
 
 **Reset and reprocess from scratch:**
 
 ```bash
-rm ~/customers/<customer-name>/tech_stack.yaml
+rm ~/customers/<customer-name>/tech_stack.md
 cd ~/customers/<customer-name>
-/update-tech-stack    # scans all .md files in ./gong/ and rebuilds from blank template
+/update-tech-stack    # scans all .md files in ./gong/ and rebuilds from scratch
 ```
 
 ### 3 Whys
