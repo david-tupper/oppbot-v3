@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gong Triage</title>
+<title>oppbot</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='72' x='50%' dominant-baseline='top' text-anchor='middle'>🤖</text></svg>">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12,13 +13,13 @@
     --surface: #1a1d27;
     --surface2: #22263a;
     --border: #2e3347;
-    --accent: #5b8af5;
-    --accent-dim: #3a5cbf;
-    --text: #d4d8e8;
-    --text-dim: #6b7295;
-    --text-muted: #3f4460;
+    --accent: #7aabff;
+    --accent-dim: #4d78d4;
+    --text: #e8ecf8;
+    --text-dim: #8892b8;
+    --text-muted: #4e5880;
     --selected-bg: #1e2540;
-    --selected-border: #5b8af5;
+    --selected-border: #7aabff;
     --skip-color: #f5855b;
     --route-color: #5bf59a;
     --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
@@ -56,16 +57,6 @@
     letter-spacing: 0.02em;
     font-family: var(--mono);
     color: var(--text);
-  }
-
-  #count-badge {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-dim);
-    background: var(--surface2);
-    padding: 2px 8px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
   }
 
   /* Column headers */
@@ -392,33 +383,222 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  /* Override header alignment for nav buttons */
+  #header { align-items: center; }
+
+  /* Top-level nav */
+  #nav { display: flex; gap: 4px; }
+
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+
+  .nav-btn.active {
+    background: var(--selected-bg);
+    border-color: var(--selected-border);
+    color: var(--text);
+  }
+
+  .nav-btn kbd { font-size: 10px; opacity: 0.6; }
+
+  .nav-badge {
+    margin-left: 6px;
+    background: var(--accent);
+    color: #0f1117;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--mono);
+    padding: 1px 5px;
+    border-radius: 8px;
+    vertical-align: middle;
+  }
+
+  /* Triage view wrapper */
+  #triage-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Triage tabs bar */
+  #triage-tabs-bar {
+    display: flex;
+    align-items: center;
+    padding: 6px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  #triage-tabs-bar #tabs { margin-left: 0; }
+
+  /* Split-pane intel views */
+  .intel-view { display: flex; flex: 1; overflow: hidden; }
+
+  .customer-panel {
+    width: 180px; min-width: 140px; flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 0;
+    display: flex; flex-direction: column;
+  }
+
+  .customer-search {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .customer-search input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 8px;
+    outline: none;
+  }
+
+  .customer-search input:focus {
+    border-color: var(--accent);
+  }
+
+  .customer-search input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .customer-list-items {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px 0;
+  }
+
+  .customer-item {
+    padding: 6px 14px; cursor: pointer; font-size: 13px;
+    color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .customer-item:hover { background: var(--surface2); color: var(--text); }
+
+  .customer-item.selected {
+    background: var(--selected-bg); color: var(--text);
+    border-left: 2px solid var(--accent);
+  }
+
+  /* Intel content wrapper */
+  .intel-content-wrapper {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  .path-bar {
+    flex-shrink: 0;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .path-link {
+    color: var(--text-dim);
+    text-decoration: none;
+  }
+
+  .path-link:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  /* Markdown pane */
+  .markdown-pane {
+    flex: 1; overflow-y: auto; padding: 24px 32px;
+    font-size: 14px; line-height: 1.7;
+  }
+
+  .markdown-pane h1 { font-size: 20px; margin-bottom: 12px; }
+  .markdown-pane h2 { font-size: 16px; margin: 20px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  .markdown-pane h3 { font-size: 14px; margin: 16px 0 6px; color: var(--accent); }
+  .markdown-pane h4 { font-size: 13px; font-weight: 600; margin: 28px 0 6px; }
+  .markdown-pane blockquote { border-left: 3px solid var(--accent-dim); padding-left: 12px; color: var(--text-dim); }
+  .markdown-pane code { background: var(--surface2); padding: 1px 4px; border-radius: 3px; font-family: var(--mono); font-size: 12px; }
+  .markdown-pane ul { padding-left: 20px; }
+  .markdown-pane li { margin: 3px 0; }
+  .markdown-pane hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .markdown-pane a { color: #89b4fa; text-decoration: underline; text-underline-offset: 2px; }
+  .markdown-pane a:hover { color: #b8d0ff; }
+  .placeholder { color: var(--text-muted); font-style: italic; }
+  .hint-sep { color: var(--border); }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 <div id="app">
   <div id="header">
-    <h1>Gong Triage</h1>
-    <div id="tabs">
-      <button class="tab active" data-tab="unprocessed">Unprocessed<span class="tab-count" id="unprocessed-count">…</span></button>
-      <button class="tab" data-tab="processed">Processed<span class="tab-count" id="processed-count">0</span></button>
+    <h1>oppbot</h1>
+    <div id="nav">
+      <button class="nav-btn active" data-view="triage">Triage<span id="triage-badge" class="nav-badge" style="display:none"></span></button>
+      <button class="nav-btn" data-view="tech-stack">Tech Stack</button>
+      <button class="nav-btn" data-view="3-whys">3 Whys</button>
     </div>
   </div>
 
-  <div id="col-headers">
-    <div class="col-date">Date<span class="resize-handle" data-col="0"></span></div>
-    <div class="col-owner">Organizer<span class="resize-handle" data-col="1"></span></div>
-    <div class="col-title">Title<span class="resize-handle" data-col="2"></span></div>
-    <div class="col-brief">Summary<span class="resize-handle" data-col="3"></span></div>
-    <div class="col-size">Size</div>
+  <div id="triage-view">
+    <div id="triage-tabs-bar">
+      <div id="tabs">
+        <button class="tab active" data-tab="unprocessed">Unprocessed<span class="tab-count" id="unprocessed-count">…</span></button>
+        <button class="tab" data-tab="processed">Processed<span class="tab-count" id="processed-count">0</span></button>
+      </div>
+    </div>
+
+    <div id="col-headers">
+      <div class="col-date">Date<span class="resize-handle" data-col="0"></span></div>
+      <div class="col-owner">Organizer<span class="resize-handle" data-col="1"></span></div>
+      <div class="col-title">Title<span class="resize-handle" data-col="2"></span></div>
+      <div class="col-brief">Summary<span class="resize-handle" data-col="3"></span></div>
+      <div class="col-size">Size</div>
+    </div>
+
+    <div id="list-container" tabindex="0">
+      <!-- rows injected here -->
+    </div>
+
+    <div id="empty-state">
+      <div id="empty-icon">&#10003;</div>
+      <div>All caught up. 0 calls remaining.</div>
+    </div>
+
   </div>
 
-  <div id="list-container" tabindex="0">
-    <!-- rows injected here -->
+  <div id="tech-stack-view" class="intel-view" style="display:none">
+    <div class="customer-panel">
+      <div class="customer-search"><input id="ts-search" type="text" placeholder="filter…" autocomplete="off" spellcheck="false"></div>
+      <div id="ts-customer-list" class="customer-list-items"></div>
+    </div>
+    <div class="intel-content-wrapper">
+      <div id="ts-path-bar" class="path-bar" style="display:none"><a id="ts-path-link" class="path-link" href="#"></a></div>
+      <div id="ts-content" class="markdown-pane"><p class="placeholder">Select a customer</p></div>
+    </div>
   </div>
 
-  <div id="empty-state">
-    <div id="empty-icon">&#10003;</div>
-    <div>All caught up. 0 calls remaining.</div>
+  <div id="3-whys-view" class="intel-view" style="display:none">
+    <div class="customer-panel">
+      <div class="customer-search"><input id="tw-search" type="text" placeholder="filter…" autocomplete="off" spellcheck="false"></div>
+      <div id="tw-customer-list" class="customer-list-items"></div>
+    </div>
+    <div class="intel-content-wrapper">
+      <div id="tw-path-bar" class="path-bar" style="display:none"><a id="tw-path-link" class="path-link" href="#"></a></div>
+      <div id="tw-content" class="markdown-pane"><p class="placeholder">Select a customer</p></div>
+    </div>
   </div>
 
   <div id="hint-bar">
@@ -427,6 +607,10 @@
     <span class="hint-item"><kbd>Enter</kbd> route</span>
     <span class="hint-item"><kbd>u</kbd>/<kbd>p</kbd> switch tab</span>
     <span class="hint-item"><kbd>Esc</kbd> cancel</span>
+    <span class="hint-sep"> | </span>
+    <span class="hint-item"><kbd>1</kbd> Triage</span>
+    <span class="hint-item"><kbd>2</kbd> Tech Stack</span>
+    <span class="hint-item"><kbd>3</kbd> 3 Whys</span>
   </div>
 </div>
 
@@ -457,6 +641,8 @@
   let routingOpen = false;
   let acIndex = 0;         // autocomplete selected index
   let activeTab = 'unprocessed';
+  let activeView = 'triage';
+  let selectedCustomer = null;
 
   // -------------------------------------------------------------------------
   // DOM refs
@@ -484,6 +670,7 @@
     calls = activeTab === 'unprocessed' ? unprocessedCalls : processedCalls;
     cursor = Math.min(cursor, Math.max(0, calls.length - 1));
     updateTabCounts();
+    updateHintBar();
     render();
     listContainer.focus();
   }
@@ -491,6 +678,13 @@
   function updateTabCounts() {
     document.getElementById('unprocessed-count').textContent = unprocessedCalls.length;
     document.getElementById('processed-count').textContent = processedCalls.length;
+    const badge = document.getElementById('triage-badge');
+    if (unprocessedCalls.length > 0) {
+      badge.textContent = unprocessedCalls.length;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
   }
 
   function switchTab(tab) {
@@ -500,14 +694,58 @@
     document.querySelectorAll('.tab').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
-    document.querySelector('.hint-skip').style.display = tab === 'unprocessed' ? '' : 'none';
+    updateHintBar();
     render();
     listContainer.focus();
+  }
+
+  function updateHintBar() {
+    const bar = document.getElementById('hint-bar');
+    const navHints = `<span class="hint-sep"> | </span><span class="hint-item"><kbd>1</kbd> Triage</span><span class="hint-item"><kbd>2</kbd> Tech Stack</span><span class="hint-item"><kbd>3</kbd> 3 Whys</span>`;
+    if (activeView === 'triage') {
+      const skipDisplay = activeTab === 'unprocessed' ? '' : 'none';
+      bar.innerHTML =
+        `<span class="hint-item"><kbd>↑</kbd>/<kbd>↓</kbd> navigate</span>` +
+        `<span class="hint-item hint-skip" style="display:${skipDisplay}"><kbd>s</kbd> skip</span>` +
+        `<span class="hint-item"><kbd>Enter</kbd> route</span>` +
+        `<span class="hint-item"><kbd>u</kbd>/<kbd>p</kbd> switch tab</span>` +
+        `<span class="hint-item"><kbd>Esc</kbd> cancel</span>` +
+        navHints;
+    } else {
+      bar.innerHTML =
+        `<span class="hint-item"><kbd>↑</kbd>/<kbd>↓</kbd> navigate customers</span>` +
+        navHints;
+    }
   }
 
   document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+
+  function switchView(view) {
+    activeView = view;
+    document.getElementById('triage-view').style.display = view === 'triage' ? '' : 'none';
+    document.getElementById('tech-stack-view').style.display = view === 'tech-stack' ? '' : 'none';
+    document.getElementById('3-whys-view').style.display = view === '3-whys' ? '' : 'none';
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === view);
+    });
+    updateHintBar();
+    if (view !== 'triage' && customers.length > 0) {
+      const panelId = view === 'tech-stack' ? 'ts-customer-list' : 'tw-customer-list';
+      const searchId = view === 'tech-stack' ? 'ts-search' : 'tw-search';
+      const filter = document.getElementById(searchId)?.value || '';
+      if (!selectedCustomer) selectedCustomer = customers[0];
+      renderCustomerList(panelId, view, filter);
+      selectCustomer(view, selectedCustomer);
+    } else if (view === 'triage') {
+      listContainer.focus();
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Rendering
@@ -583,11 +821,37 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
     switch (e.key) {
+      case '1':
+        e.preventDefault();
+        switchView('triage');
+        break;
+      case '2':
+        e.preventDefault();
+        switchView('tech-stack');
+        break;
+      case '3':
+        e.preventDefault();
+        switchView('3-whys');
+        break;
+      case 'ArrowUp':
+        if (activeView === 'triage') return;
+        e.preventDefault();
+        { const idx = customers.indexOf(selectedCustomer);
+          if (idx > 0) selectCustomer(activeView, customers[idx - 1]); }
+        break;
+      case 'ArrowDown':
+        if (activeView === 'triage') return;
+        e.preventDefault();
+        { const idx = customers.indexOf(selectedCustomer);
+          if (idx < customers.length - 1) selectCustomer(activeView, customers[idx + 1]); }
+        break;
       case 'p':
+        if (activeView !== 'triage') return;
         e.preventDefault();
         switchTab('processed');
         break;
       case 'u':
+        if (activeView !== 'triage') return;
         e.preventDefault();
         switchTab('unprocessed');
         break;
@@ -596,6 +860,7 @@
 
   listContainer.addEventListener('keydown', (e) => {
     if (routingOpen) return;
+    if (activeView !== 'triage') return;
     if (calls.length === 0) return;
 
     switch (e.key) {
@@ -830,6 +1095,74 @@
   }
 
   // -------------------------------------------------------------------------
+  // Customer intelligence views
+  // -------------------------------------------------------------------------
+  function renderCustomerList(panelId, view, filter) {
+    const q = (filter || '').toLowerCase();
+    const panel = document.getElementById(panelId);
+    panel.innerHTML = '';
+    customers.filter(n => !q || n.toLowerCase().includes(q)).forEach(name => {
+      const el = document.createElement('div');
+      el.className = 'customer-item' + (name === selectedCustomer ? ' selected' : '');
+      el.textContent = name;
+      el.addEventListener('click', () => selectCustomer(view, name));
+      panel.appendChild(el);
+    });
+  }
+
+  // Wire search inputs (once, on init)
+  function initCustomerSearch() {
+    [['ts-search', 'ts-customer-list', 'tech-stack'], ['tw-search', 'tw-customer-list', '3-whys']].forEach(([inputId, panelId, view]) => {
+      document.getElementById(inputId).addEventListener('input', function () {
+        renderCustomerList(panelId, view, this.value);
+      });
+    });
+  }
+
+  function selectCustomer(view, name) {
+    selectedCustomer = name;
+    const panelId   = view === 'tech-stack' ? 'ts-customer-list' : 'tw-customer-list';
+    const contentId = view === 'tech-stack' ? 'ts-content'       : 'tw-content';
+    const pathBarId = view === 'tech-stack' ? 'ts-path-bar'      : 'tw-path-bar';
+    const pathLinkId = view === 'tech-stack' ? 'ts-path-link'    : 'tw-path-link';
+
+    document.querySelectorAll('#' + panelId + ' .customer-item').forEach(el => {
+      const sel = el.textContent === name;
+      el.classList.toggle('selected', sel);
+      if (sel) el.scrollIntoView({ block: 'nearest' });
+    });
+
+    const endpoint = view === 'tech-stack'
+      ? '/api/markdown/tech-stack/' + encodeURIComponent(name)
+      : '/api/markdown/3-whys/' + encodeURIComponent(name);
+
+    fetch(endpoint)
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        // Show path bar only when file exists
+        if (ok) {
+          const pathLink = document.getElementById(pathLinkId);
+          pathLink.textContent = data.path;
+          pathLink.onclick = (e) => {
+            e.preventDefault();
+            fetch('/api/open-editor/' + encodeURIComponent(name) + '?view=' + view);
+          };
+          document.getElementById(pathBarId).style.display = '';
+        } else {
+          document.getElementById(pathBarId).style.display = 'none';
+        }
+
+        document.getElementById(contentId).innerHTML = ok
+          ? marked.parse(data.content)
+          : '<p class="placeholder">No file yet for this customer.</p>';
+      })
+      .catch(() => {
+        document.getElementById(pathBarId).style.display = 'none';
+        document.getElementById(contentId).innerHTML = '<p class="placeholder">No file yet for this customer.</p>';
+      });
+  }
+
+  // -------------------------------------------------------------------------
   // Toast
   // -------------------------------------------------------------------------
   let toastTimer = null;
@@ -909,6 +1242,7 @@
   // Init
   // -------------------------------------------------------------------------
   initColWidths();
+  initCustomerSearch();
   loadData();
 })();
 </script>

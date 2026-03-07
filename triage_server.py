@@ -7,6 +7,7 @@ Usage:
 
 import json
 import shutil
+import subprocess
 import sys
 import threading
 from pathlib import Path
@@ -94,6 +95,33 @@ def api_processed():
 def api_customers():
     dirs = list_customer_dirs(CUSTOMERS_DIR)
     return jsonify(sorted(d.name for d in dirs))
+
+
+@app.route('/api/markdown/tech-stack/<customer>')
+def api_tech_stack(customer):
+    path = CUSTOMERS_DIR / customer / 'tech_stack.md'
+    if not path.exists():
+        return jsonify({'error': 'not found', 'dir': str(CUSTOMERS_DIR / customer)}), 404
+    return jsonify({'content': path.read_text(encoding='utf-8'), 'path': str(path), 'dir': str(path.parent)})
+
+
+@app.route('/api/markdown/3-whys/<customer>')
+def api_3_whys(customer):
+    path = CUSTOMERS_DIR / customer / '3_whys_summary.md'
+    if not path.exists():
+        return jsonify({'error': 'not found', 'dir': str(CUSTOMERS_DIR / customer)}), 404
+    return jsonify({'content': path.read_text(encoding='utf-8'), 'path': str(path), 'dir': str(path.parent)})
+
+
+@app.route('/api/open-editor/<customer>')
+def api_open_editor(customer):
+    view = request.args.get('view', 'tech-stack')
+    filename = 'tech_stack.md' if view == 'tech-stack' else '3_whys_summary.md'
+    path = CUSTOMERS_DIR / customer / filename
+    if not path.exists():
+        return jsonify({'error': 'not found'}), 404
+    subprocess.run(['open', str(path)], check=False)
+    return jsonify({'ok': True})
 
 
 @app.route("/api/route", methods=["POST"])

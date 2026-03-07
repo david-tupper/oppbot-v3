@@ -3,7 +3,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-# Forward port 80 → 5555 so gong-triage.local works without a port number
+# Forward port 80 → 5555 so oppbot.local works without a port number
 # (requires sudo once per boot; pfctl is reset on restart)
 echo "rdr pass on lo0 proto tcp from any to any port 80 -> 127.0.0.1 port 5555" \
   | sudo pfctl -ef - 2>/dev/null || true
@@ -23,9 +23,9 @@ for i in {1..10}; do
 done
 
 # Open browser
-open http://gong-triage.local
+open http://oppbot.local
 
-echo "Triage running at http://gong-triage.local (pid $SERVER_PID)"
+echo "oppbot running at http://oppbot.local (pid $SERVER_PID)"
 echo "Press Ctrl+C to stop."
 
 # Keep script alive; kill server on exit
