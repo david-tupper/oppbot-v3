@@ -628,6 +628,56 @@ def run_sync(args):
 
 
 # ---------------------------------------------------------------------------
+# Nuke command
+# ---------------------------------------------------------------------------
+
+def cmd_nuke(customers_dir: Path):
+    """Delete all fetched data, leaving directories and config intact."""
+    print("This will permanently delete:")
+    print(f"  - All transcript .md files in */gong/")
+    print(f"  - All manifest.json files in */gong/")
+    print(f"  - tech_stack.md, 3_whys_summary.md, 3_whys.json per customer")
+    print(f"  - .gong_sync.json (sync state)")
+    print()
+    confirm = input("Type 'nuke' to confirm: ").strip()
+    if confirm != "nuke":
+        print("Aborted.")
+        return
+
+    deleted = 0
+
+    # Sync state
+    sync_state_path = customers_dir / ".gong_sync.json"
+    if sync_state_path.exists():
+        sync_state_path.unlink()
+        print(f"  deleted  .gong_sync.json")
+        deleted += 1
+
+    # All dirs including _unmatched subdirs
+    all_gong_dirs = list(customers_dir.rglob("gong"))
+    for gong_dir in all_gong_dirs:
+        if not gong_dir.is_dir():
+            continue
+        for f in gong_dir.iterdir():
+            if f.suffix == ".md" or f.name == "manifest.json":
+                f.unlink()
+                print(f"  deleted  {f.relative_to(customers_dir)}")
+                deleted += 1
+
+    # Per-customer enrichment files
+    for customer_dir in list_customer_dirs(customers_dir):
+        for fname in ("tech_stack.md", "3_whys_summary.md", "3_whys.json"):
+            f = customer_dir / fname
+            if f.exists():
+                f.unlink()
+                print(f"  deleted  {f.relative_to(customers_dir)}")
+                deleted += 1
+
+    print()
+    print(f"Done. {deleted} files deleted. Directories and gong_routing.json preserved.")
+
+
+# ---------------------------------------------------------------------------
 # Owner management commands
 # ---------------------------------------------------------------------------
 
@@ -736,10 +786,15 @@ def main():
     parser.add_argument("--add-alias", nargs=2, metavar=("DIR", "PATTERN"), help="Append a routing alias to a customer dir")
     parser.add_argument("--show-routing", action="store_true", help="Print the current routing table for all customer dirs")
     parser.add_argument("--init-owners", action="store_true", help=f"Scaffold {OWNERS_FILE.name} with a template entry")
+    parser.add_argument("--nuke", action="store_true", help="Delete all fetched transcripts, manifests, enrichment files, and sync state (keeps dirs and config)")
 
     args = parser.parse_args()
 
     customers_dir = Path(args.customers_dir)
+
+    if args.nuke:
+        cmd_nuke(customers_dir)
+        return
 
     if args.init_owners:
         cmd_init_owners()
