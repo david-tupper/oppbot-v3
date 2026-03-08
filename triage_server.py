@@ -39,7 +39,7 @@ try:
 except ImportError:
     THREE_WHYS_AVAILABLE = False
 
-CUSTOMERS_DIR = Path("/Users/davidtupper/customers")
+CUSTOMERS_DIR = Path.home() / "customers"
 UNMATCHED_GONG_DIR = CUSTOMERS_DIR / "_unmatched" / "unprocessed" / "gong"
 PROCESSED_GONG_DIR = CUSTOMERS_DIR / "_unmatched" / "processed" / "gong"
 
@@ -120,6 +120,32 @@ def api_3_whys(customer):
     if not path.exists():
         return jsonify({'error': 'not found', 'dir': str(CUSTOMERS_DIR / customer)}), 404
     return jsonify({'content': path.read_text(encoding='utf-8'), 'path': str(path), 'dir': str(path.parent)})
+
+
+@app.route('/api/add-alias', methods=['POST'])
+def api_add_alias():
+    data = request.get_json(force=True)
+    customer = data.get('customer')
+    alias = data.get('alias', '').strip()
+    if not customer or not alias:
+        return jsonify({'error': 'customer and alias required'}), 400
+    target = CUSTOMERS_DIR / customer
+    if not target.exists():
+        return jsonify({'error': f'Unknown customer: {customer}'}), 404
+    config_path = target / 'gong_routing.json'
+    if config_path.exists():
+        try:
+            cfg = json.loads(config_path.read_text())
+        except Exception:
+            cfg = {}
+    else:
+        cfg = {}
+    aliases = cfg.get('aliases', [])
+    if alias not in aliases:
+        aliases.append(alias)
+    cfg['aliases'] = aliases
+    config_path.write_text(json.dumps(cfg, indent=2))
+    return jsonify({'ok': True, 'aliases': aliases})
 
 
 @app.route('/api/open-editor/<customer>')

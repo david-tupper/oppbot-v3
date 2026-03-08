@@ -788,7 +788,7 @@ def main():
     parser.add_argument("--force", action="store_true", help="Re-process already-synced calls")
     parser.add_argument(
         "--customers-dir",
-        default="/Users/davidtupper/customers",
+        default=str(Path.home() / "customers"),
         help="Base path for customer directories",
     )
     parser.add_argument("--init-routing", action="store_true", help="Auto-generate gong_routing.json for all customer dirs")

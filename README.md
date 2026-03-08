@@ -10,6 +10,7 @@ A local tool for syncing Gong call transcripts from BigQuery, auto-routing them 
 - `google-cloud-bigquery` — BigQuery client
 - `flask` — triage server
 - GCP credentials: `gcloud auth application-default login`
+- `ANTHROPIC_API_KEY` — required for enrichment (tech stack, 3 Whys). Set in shell or add to a `.env` file in the repo root (gitignored).
 
 ---
 
@@ -169,6 +170,8 @@ Opens `http://oppbot.local`. Three views, navigable by hotkey:
 
 In the routing overlay, type to filter customer folders. If no match exists, a **+ Create folder** option appears for valid kebab-case names (`^[a-z0-9][a-z0-9-]*$`). Selecting it creates the folder and routes the call in one step.
 
+After selecting a destination, a second prompt appears asking for an optional **routing alias** — a phrase from the call title (e.g. `Applied Research Associates`). Type a string and press Enter to save it to the customer's `gong_routing.json` so future calls auto-route. Press Enter with an empty field to skip.
+
 The **Processed tab** shows calls that were skipped. You can re-route them to a customer folder from there if you skipped something by mistake.
 
 The **Triage nav button** shows a count badge when there are unprocessed calls waiting.
@@ -220,24 +223,26 @@ done
 
 ## Automatic sync
 
-A launchd agent runs the sync daily at **12pm PT**:
+A launchd agent runs the sync daily at **12pm PT**. Run once to install:
 
+```bash
+./install-launchd.sh
 ```
-~/Library/LaunchAgents/com.davidtupper.gongsync.plist
-```
+
+This generates `~/Library/LaunchAgents/com.<username>.gongsync.plist` using your current username and the repo's location, then loads it immediately.
 
 Logs: `~/Library/Logs/gongsync.log`
 
 ```bash
 # Manually trigger a run
-launchctl start com.davidtupper.gongsync
+launchctl start com.$(whoami).gongsync
 
 # Check logs
 tail -f ~/Library/Logs/gongsync.log
 
 # Stop/start the agent
-launchctl unload ~/Library/LaunchAgents/com.davidtupper.gongsync.plist
-launchctl load ~/Library/LaunchAgents/com.davidtupper.gongsync.plist
+launchctl unload ~/Library/LaunchAgents/com.$(whoami).gongsync.plist
+launchctl load ~/Library/LaunchAgents/com.$(whoami).gongsync.plist
 ```
 
 ---
@@ -292,3 +297,11 @@ python3 gong_fetch.py --init-routing                        # scaffold gong_rout
 python3 gong_fetch.py --add-alias grafana-labs "Grafana"   # add a routing alias
 python3 gong_fetch.py --show-routing                        # print the full routing table
 ```
+
+### Reset all fetched data
+
+```bash
+python3 gong_fetch.py --nuke
+```
+
+Deletes all transcripts, manifests, enrichment files (`.md`, `.json`), and `.gong_sync.json` across all customer directories and `_unmatched/`. Customer directories and `gong_routing.json` files are preserved. Requires typing `nuke` at the confirmation prompt.

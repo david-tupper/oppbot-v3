@@ -223,38 +223,39 @@
     margin-bottom: 4px;
   }
 
-  /* Tabs */
-  #tabs {
-    display: flex;
-    gap: 4px;
-    margin-left: 12px;
+  /* Triage nav panel tabs */
+  #triage-nav-panel {
+    width: 160px; min-width: 130px; flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    padding: 8px 0;
   }
 
-  .tab {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text-dim);
+  .triage-tab-item {
+    padding: 6px 14px;
     cursor: pointer;
+    font-size: 13px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 2px solid transparent;
+  }
+
+  .triage-tab-item:hover { background: var(--surface2); color: var(--text); }
+
+  .triage-tab-item.active {
+    background: var(--selected-bg);
+    color: var(--text);
+    border-left-color: var(--accent);
+  }
+
+  .triage-tab-count {
     font-family: var(--mono);
     font-size: 11px;
-    padding: 3px 10px;
-  }
-
-  .tab.active {
-    background: var(--selected-bg);
-    border-color: var(--selected-border);
-    color: var(--text);
-  }
-
-  .tab-count {
-    margin-left: 5px;
     color: var(--text-muted);
   }
 
-  .tab.active .tab-count {
-    color: var(--accent);
-  }
+  .triage-tab-item.active .triage-tab-count { color: var(--accent); }
 
   /* Hint bar */
   #hint-bar {
@@ -330,6 +331,38 @@
   #autocomplete-list {
     max-height: 220px;
     overflow-y: auto;
+  }
+
+  #alias-input-wrap {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  #alias-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  #alias-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    caret-color: var(--accent);
+  }
+
+  #alias-hint {
+    padding: 0 12px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
   }
 
   #autocomplete-list::-webkit-scrollbar { width: 4px; }
@@ -424,22 +457,17 @@
   /* Triage view wrapper */
   #triage-view {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     flex: 1;
     overflow: hidden;
   }
 
-  /* Triage tabs bar */
-  #triage-tabs-bar {
+  #triage-content {
+    flex: 1;
     display: flex;
-    align-items: center;
-    padding: 6px 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
+    flex-direction: column;
+    overflow: hidden;
   }
-
-  #triage-tabs-bar #tabs { margin-left: 0; }
 
   /* Split-pane intel views */
   .intel-view { display: flex; flex: 1; overflow: hidden; }
@@ -553,30 +581,29 @@
   </div>
 
   <div id="triage-view">
-    <div id="triage-tabs-bar">
-      <div id="tabs">
-        <button class="tab active" data-tab="unprocessed">Unprocessed<span class="tab-count" id="unprocessed-count">…</span></button>
-        <button class="tab" data-tab="processed">Processed<span class="tab-count" id="processed-count">0</span></button>
+    <div id="triage-nav-panel">
+      <div class="triage-tab-item active" data-tab="unprocessed">Unprocessed<span class="triage-tab-count" id="unprocessed-count">…</span></div>
+      <div class="triage-tab-item" data-tab="processed">Processed<span class="triage-tab-count" id="processed-count">0</span></div>
+    </div>
+
+    <div id="triage-content">
+      <div id="col-headers">
+        <div class="col-date">Date<span class="resize-handle" data-col="0"></span></div>
+        <div class="col-owner">Organizer<span class="resize-handle" data-col="1"></span></div>
+        <div class="col-title">Title<span class="resize-handle" data-col="2"></span></div>
+        <div class="col-brief">Summary<span class="resize-handle" data-col="3"></span></div>
+        <div class="col-size">Size</div>
+      </div>
+
+      <div id="list-container" tabindex="0">
+        <!-- rows injected here -->
+      </div>
+
+      <div id="empty-state">
+        <div id="empty-icon">&#10003;</div>
+        <div>All caught up. 0 calls remaining.</div>
       </div>
     </div>
-
-    <div id="col-headers">
-      <div class="col-date">Date<span class="resize-handle" data-col="0"></span></div>
-      <div class="col-owner">Organizer<span class="resize-handle" data-col="1"></span></div>
-      <div class="col-title">Title<span class="resize-handle" data-col="2"></span></div>
-      <div class="col-brief">Summary<span class="resize-handle" data-col="3"></span></div>
-      <div class="col-size">Size</div>
-    </div>
-
-    <div id="list-container" tabindex="0">
-      <!-- rows injected here -->
-    </div>
-
-    <div id="empty-state">
-      <div id="empty-icon">&#10003;</div>
-      <div>All caught up. 0 calls remaining.</div>
-    </div>
-
   </div>
 
   <div id="tech-stack-view" class="intel-view" style="display:none">
@@ -617,11 +644,20 @@
 <!-- Routing overlay -->
 <div id="overlay-backdrop"></div>
 <div id="routing-overlay" style="display:none">
-  <div id="overlay-input-wrap">
-    <span id="overlay-label">route &rarr;</span>
-    <input id="overlay-input" type="text" placeholder="type to filter…" autocomplete="off" spellcheck="false">
+  <div id="route-step">
+    <div id="overlay-input-wrap">
+      <span id="overlay-label">route &rarr;</span>
+      <input id="overlay-input" type="text" placeholder="type to filter…" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="autocomplete-list"></div>
   </div>
-  <div id="autocomplete-list"></div>
+  <div id="alias-step" style="display:none">
+    <div id="alias-input-wrap">
+      <span id="alias-label">alias &rarr;</span>
+      <input id="alias-input" type="text" placeholder="routing string (Enter to skip)" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="alias-hint">Add a phrase from the call title so this customer auto-routes next time</div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -643,6 +679,7 @@
   let activeTab = 'unprocessed';
   let activeView = 'triage';
   let selectedCustomer = null;
+  let pendingRoute = null; // { destDir, create, call, removed }
 
   // -------------------------------------------------------------------------
   // DOM refs
@@ -653,6 +690,9 @@
   const routingOverlay = document.getElementById('routing-overlay');
   const overlayInput = document.getElementById('overlay-input');
   const autocompleteList = document.getElementById('autocomplete-list');
+  const routeStep = document.getElementById('route-step');
+  const aliasStep = document.getElementById('alias-step');
+  const aliasInput = document.getElementById('alias-input');
   const toast = document.getElementById('toast');
 
   // -------------------------------------------------------------------------
@@ -691,7 +731,7 @@
     activeTab = tab;
     calls = activeTab === 'unprocessed' ? unprocessedCalls : processedCalls;
     cursor = 0;
-    document.querySelectorAll('.tab').forEach(el => {
+    document.querySelectorAll('.triage-tab-item').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
     updateHintBar();
@@ -718,7 +758,7 @@
     }
   }
 
-  document.querySelectorAll('.tab').forEach(btn => {
+  document.querySelectorAll('.triage-tab-item').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
@@ -929,8 +969,11 @@
 
   function closeRouting() {
     routingOpen = false;
+    pendingRoute = null;
     overlayBackdrop.classList.remove('visible');
     routingOverlay.style.display = 'none';
+    routeStep.style.display = '';
+    aliasStep.style.display = 'none';
     listContainer.focus();
   }
 
@@ -955,6 +998,16 @@
   }
 
   overlayBackdrop.addEventListener('click', closeRouting);
+
+  aliasInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeRoute(aliasInput.value.trim());
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeRouting();
+    }
+  });
 
   overlayInput.addEventListener('input', () => {
     acIndex = 0;
@@ -1065,9 +1118,20 @@
       esc(name.slice(idx + query.length));
   }
 
-  async function doRoute(destDir, create) {
+  function doRoute(destDir, create) {
     if (calls.length === 0) return;
     const call = calls[cursor];
+    // Transition to alias step
+    pendingRoute = { destDir, create, call };
+    routeStep.style.display = 'none';
+    aliasStep.style.display = '';
+    aliasInput.value = '';
+    aliasInput.focus();
+  }
+
+  async function executeRoute(aliasStr) {
+    if (!pendingRoute) return;
+    const { destDir, create, call } = pendingRoute;
     closeRouting();
 
     const removed = calls.splice(cursor, 1);
@@ -1085,6 +1149,13 @@
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(body.error || res.statusText);
+      }
+      if (aliasStr) {
+        await fetch('/api/add-alias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer: destDir, alias: aliasStr }),
+        });
       }
     } catch (err) {
       calls.splice(cursor, 0, ...removed);
