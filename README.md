@@ -51,6 +51,8 @@ LIMIT 10
 
 Copy the `owner_id` from the result. The dict key is a display label used in transcript filenames — it doesn't need to match anything in the system.
 
+> **Note:** Gong calls typically appear in BigQuery with a ~2–3 day lag after they occur.
+
 ### 3. Add the local hostname (one time)
 
 ```bash
@@ -67,6 +69,8 @@ echo "127.0.0.1 oppbot.local" | sudo tee -a /etc/hosts
 python3 gong_fetch.py --sync    # pull last 30 days, auto-route to customer dirs
 ./triage.sh                      # review unmatched calls in browser
 ```
+
+> **Note:** Gong calls typically appear in BigQuery with a ~2–3 day lag after they occur.
 
 `triage.sh` opens `http://oppbot.local` and prompts for `sudo` once per boot to set up port forwarding (80 → 5555). Press Ctrl+C to stop.
 
@@ -262,6 +266,8 @@ python3 gong_fetch.py --sync --limit 500                               # overrid
 
 Defaults to the last 30 days when `--since` is omitted. Warns if the result count hits `--limit`, which may indicate truncation.
 
+> **Note:** Gong calls typically appear in BigQuery with a ~2–3 day lag after they occur.
+
 ### `--account` — manual fetch for a specific account
 
 ```bash
@@ -271,6 +277,8 @@ python3 gong_fetch.py --account "<customer-name>" --since 2025-01-01 --until 202
 python3 gong_fetch.py --account "<customer-name>" --dry-run
 python3 gong_fetch.py --account "<customer-name>" --force
 ```
+
+> **Note:** Gong calls typically appear in BigQuery with a ~2–3 day lag after they occur.
 
 ### Schema inspection
 

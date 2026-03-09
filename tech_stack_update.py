@@ -16,6 +16,15 @@ EXTRACTION_SYSTEM_PROMPT = """\
 You are a technical intelligence extractor. Extract tech stack observations from a Gong
 call transcript. Return only a structured markdown block — no prose preamble, no code fences."""
 
+MANUAL_EXTRACTION_SYSTEM_PROMPT = """\
+You are a technical intelligence extractor. Extract tech stack observations from a manual
+context note written by a Grafana AE. Return only a structured markdown block — no prose
+preamble, no code fences.
+
+IMPORTANT: This note was written by the Grafana AE directly — it is NOT a customer
+transcript. Do NOT attribute observations to "Customer". Write bullets as third-person
+factual statements about the customer's environment (e.g. "Customer uses X for Y")."""
+
 EXTRACTION_USER_PROMPT_TEMPLATE = """\
 ## Transcript
 {transcript}
@@ -41,7 +50,7 @@ If no tech stack information is present in this transcript, return exactly: NO_T
 
 Return exactly this structure:
 
-### {call_title} \u2014 {call_date} ([Gong]({gong_url}))
+{header_line}
 
 **{{Category}}**
 - fact
@@ -89,7 +98,10 @@ def _init_tech_stack(name: str) -> str:
 
 
 def _parse_transcript_metadata(transcript: str) -> tuple[str, str, str]:
-    """Parse call title, date, and Gong URL from a transcript markdown file."""
+    """Parse call title, date, and Gong URL from a transcript markdown file.
+
+    gong_url is optional — returns "" if the Gong URL row is absent.
+    """
     title_match = re.search(r"^#\s+(.+)$", transcript, re.MULTILINE)
     call_title = title_match.group(1).strip() if title_match else "Unknown Call"
 
@@ -126,7 +138,7 @@ def _update_summary_line(content: str, summary_text: str, date_str: str) -> str:
     return re.sub(r"(^# .+\n)", f"\\1{summary_line}", content, count=1)
 
 
-def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool = False) -> bool:
+def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool = False, progress_callback=None) -> bool:
     """
     Extract tech stack facts from transcript_path and append a per-call block to
     customer_dir/tech_stack.md. Regenerates the summary line on each new call.
@@ -161,17 +173,25 @@ def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool =
         return False
 
     # --- Call 1: extract per-call block ---
+    # When gong_url is absent (manual entries), render header without a link
+    if gong_url:
+        header_line = f"### {call_title} \u2014 {call_date} ([Gong]({gong_url}))"
+    else:
+        header_line = f"### {call_title} \u2014 {call_date}"
     user_prompt = EXTRACTION_USER_PROMPT_TEMPLATE.format(
         transcript=transcript,
         call_title=call_title,
         call_date=call_date,
         gong_url=gong_url,
+        header_line=header_line,
     )
+    if progress_callback:
+        progress_callback("Extracting tech stack facts")
     try:
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
-            system=EXTRACTION_SYSTEM_PROMPT,
+            system=MANUAL_EXTRACTION_SYSTEM_PROMPT if not gong_url else EXTRACTION_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
         )
         extracted_block = response.content[0].text.strip()
@@ -189,10 +209,21 @@ def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool =
         print(extracted_block)
         return True
 
-    # Append block to content (separated by ---)
-    updated_content = current_content.rstrip() + "\n\n---\n\n" + extracted_block + "\n"
+    # Insert block after header/summary section so newest appears first
+    h3_match = re.search(r"^###", current_content, re.MULTILINE)
+    if h3_match:
+        updated_content = (
+            current_content[: h3_match.start()]
+            + extracted_block
+            + "\n\n---\n\n"
+            + current_content[h3_match.start():]
+        )
+    else:
+        updated_content = current_content.rstrip() + "\n\n---\n\n" + extracted_block + "\n"
 
     # --- Call 2: regenerate summary ---
+    if progress_callback:
+        progress_callback("Updating tech stack summary")
     all_blocks = _extract_call_blocks(updated_content)
     synthesis_prompt = SYNTHESIS_PROMPT_TEMPLATE.format(all_call_blocks=all_blocks)
     try:
@@ -217,6 +248,72 @@ def update_tech_stack(transcript_path: Path, customer_dir: Path, dry_run: bool =
     except Exception as e:
         print(f"WARNING: Could not write {tech_stack_path}: {e}", file=sys.stderr)
         return False
+
+
+def delete_entry(call_title: str, customer_dir: Path) -> bool:
+    """
+    Remove a call block from tech_stack.md and re-run synthesis on the remaining data.
+
+    Finds the ### block for call_title and removes it, then regenerates the summary line.
+    Returns True if a change was made, False if the entry was not found.
+    """
+    tech_stack_path = customer_dir / "tech_stack.md"
+    if not tech_stack_path.exists():
+        print(f"  [tech_stack] delete_entry: tech_stack.md not found")
+        return False
+
+    try:
+        content = tech_stack_path.read_text(encoding="utf-8")
+    except Exception as e:
+        print(f"WARNING: Could not read {tech_stack_path}: {e}", file=sys.stderr)
+        return False
+
+    # Remove the ### block for this call_title (down to but not including next ### or ---)
+    escaped = re.escape(call_title)
+    new_content = re.sub(
+        rf"(?m)^###\s+{escaped}[^\n]*\n(?:(?!^###(?!#)|^---).*\n)*",
+        "",
+        content,
+    )
+    if new_content == content:
+        print(f"  [tech_stack] delete_entry: '{call_title}' not found — nothing to remove")
+        return False
+
+    # Clean up extra blank lines
+    new_content = re.sub(r"\n{3,}", "\n\n", new_content)
+
+    # Also strip the --- separator that preceded this block if it's now dangling.
+    # Pattern: ---\n\n immediately followed by --- or end of content
+    new_content = re.sub(r"---\n\n(?=---|\Z)", "", new_content)
+
+    try:
+        tech_stack_path.write_text(new_content, encoding="utf-8")
+    except Exception as e:
+        print(f"WARNING: Could not write {tech_stack_path}: {e}", file=sys.stderr)
+        return False
+
+    # Regenerate summary line if client available
+    client = get_anthropic_client()
+    if client is not None:
+        all_blocks = _extract_call_blocks(new_content)
+        if all_blocks.strip():
+            synthesis_prompt = SYNTHESIS_PROMPT_TEMPLATE.format(all_call_blocks=all_blocks)
+            try:
+                synthesis_response = client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=512,
+                    messages=[{"role": "user", "content": synthesis_prompt}],
+                )
+                summary_text = synthesis_response.content[0].text.strip()
+                if summary_text:
+                    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    new_content = _update_summary_line(new_content, summary_text, date_str)
+                    tech_stack_path.write_text(new_content, encoding="utf-8")
+            except Exception as e:
+                print(f"WARNING: Synthesis regeneration failed: {e}", file=sys.stderr)
+
+    print(f"  [tech_stack] Removed '{call_title}' from tech_stack.md")
+    return True
 
 
 def main():

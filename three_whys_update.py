@@ -38,6 +38,16 @@ quotes or paraphrased statements from Grafana Labs employees (AEs, SEs, or anyon
 representing Grafana). If a Grafana employee says something that prompts a customer
 response, attribute the insight to the customer's response only."""
 
+MANUAL_SYSTEM_PROMPT = """\
+You are a sales intelligence extractor. Extract evidence for three sales qualification
+questions from a manual context note written by a Grafana AE. Return only the structured
+markdown block described — no prose, no code fences.
+
+IMPORTANT: This note was written by the Grafana AE directly — it is NOT a customer
+transcript. Any observations are the AE's own account. Do NOT attribute bullets or quotes
+to "Customer". Instead, attribute quotes to "AE" (e.g. — AE). Bullets should be written
+as third-person observations about the customer, not as things the customer said."""
+
 USER_PROMPT_TEMPLATE = """\
 ## Transcript
 
@@ -84,33 +94,33 @@ DEFINITIONS — apply strictly:
 
 Return exactly this markdown structure (only include Whys where evidence exists):
 
-#### {call_title} — {call_date} ([Gong]({gong_url}))
+{header_line}
 
 ##### Why Grafana?
 
 ##### Notes
-- bullet summary 1 ([{call_title}]({gong_url}))
-- bullet summary 2 ([{call_title}]({gong_url}))
+- bullet summary 1
+- bullet summary 2
 
 ##### Quotes
-- "{{quote}}" — {{Speaker}} ([{call_title}]({gong_url}))
-- "{{quote}}" — {{Speaker}} ([{call_title}]({gong_url}))
+- "{{quote}}" — {{Speaker}}
+- "{{quote}}" — {{Speaker}}
 
 ##### Why Now?
 
 ##### Notes
-- ... ([{call_title}]({gong_url}))
+- ...
 
 ##### Quotes
-- "..." — {{Speaker}} ([{call_title}]({gong_url}))
+- "..." — {{Speaker}}
 
 ##### Why Anything?
 
 ##### Notes
-- ... ([{call_title}]({gong_url}))
+- ...
 
 ##### Quotes
-- "..." — {{Speaker}} ([{call_title}]({gong_url}))"""
+- "..." — {{Speaker}}"""
 
 SYNTHESIS_PROMPT_TEMPLATE = """\
 Based on the customer evidence below, write a 2-3 sentence synthesis for each Why section
@@ -155,7 +165,10 @@ def _init_3_whys_json(name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def _parse_transcript_metadata(transcript: str) -> tuple[str, str, str]:
-    """Parse call title, date, and Gong URL from a transcript markdown file."""
+    """Parse call title, date, and Gong URL from a transcript markdown file.
+
+    gong_url is optional — returns "" if the Gong URL row is absent.
+    """
     title_match = re.search(r"^#\s+(.+)$", transcript, re.MULTILINE)
     call_title = title_match.group(1).strip() if title_match else "Unknown Call"
 
@@ -338,7 +351,7 @@ def _update_syntheses_in_content(content: str, syntheses: dict[str, str], date_s
 # ---------------------------------------------------------------------------
 
 def _append_blocks_to_content(current_content: str, call_blocks: dict[str, str]) -> str:
-    """Append call blocks into their respective ## Why sections."""
+    """Insert call blocks into their respective ## Why sections (newest first)."""
     if not call_blocks:
         return current_content
 
@@ -358,7 +371,17 @@ def _append_blocks_to_content(current_content: str, call_blocks: dict[str, str])
     result_parts = []
     for part, key in zip(parts, part_keys):
         if key and key in call_blocks:
-            part = part.rstrip() + "\n\n" + call_blocks[key] + "\n"
+            # Insert before the first #### entry so newest appears at top
+            h4_match = re.search(r"^####", part, re.MULTILINE)
+            if h4_match:
+                part = (
+                    part[: h4_match.start()]
+                    + call_blocks[key]
+                    + "\n\n"
+                    + part[h4_match.start():]
+                )
+            else:
+                part = part.rstrip() + "\n\n" + call_blocks[key] + "\n"
         result_parts.append(part)
 
     return "\n---\n".join(result_parts)
@@ -396,7 +419,7 @@ def get_anthropic_client():
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def update_3_whys(transcript_path: Path, customer_dir: Path, dry_run: bool = False) -> bool:
+def update_3_whys(transcript_path: Path, customer_dir: Path, dry_run: bool = False, progress_callback=None) -> bool:
     """
     Extract 3 Whys evidence from transcript_path, append to 3_whys_summary.md,
     update 3_whys.json, and regenerate per-section synthesis.
@@ -431,17 +454,25 @@ def update_3_whys(transcript_path: Path, customer_dir: Path, dry_run: bool = Fal
         return False
 
     # --- Call 1: extract per-call evidence ---
+    # When gong_url is absent (manual entries), render header without a link
+    if gong_url:
+        header_line = f"#### {call_title} — {call_date} ([Gong]({gong_url}))"
+    else:
+        header_line = f"#### {call_title} — {call_date}"
     user_prompt = USER_PROMPT_TEMPLATE.format(
         transcript=transcript,
         call_title=call_title,
         call_date=call_date,
         gong_url=gong_url,
+        header_line=header_line,
     )
+    if progress_callback:
+        progress_callback("Extracting 3 Whys evidence")
     try:
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
-            system=SYSTEM_PROMPT,
+            system=MANUAL_SYSTEM_PROMPT if not gong_url else SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
         )
         claude_response = response.content[0].text.strip()
@@ -476,6 +507,8 @@ def update_3_whys(transcript_path: Path, customer_dir: Path, dry_run: bool = Fal
     json_data["last_updated"] = datetime.now(timezone.utc).isoformat()
 
     # --- Call 2: regenerate synthesis across all calls ---
+    if progress_callback:
+        progress_callback("Updating 3 Whys synthesis")
     syntheses = _generate_syntheses(client, json_data)
     for why_key in ["why_grafana", "why_now", "why_anything"]:
         if why_key in syntheses:
@@ -497,6 +530,81 @@ def update_3_whys(transcript_path: Path, customer_dir: Path, dry_run: bool = Fal
     except Exception as e:
         print(f"WARNING: Could not write outputs: {e}", file=sys.stderr)
         return False
+
+
+def delete_entry(call_title: str, customer_dir: Path) -> bool:
+    """
+    Remove a call entry from 3_whys.json and its block from 3_whys_summary.md,
+    then re-run synthesis on the remaining data.
+
+    Returns True if any changes were made, False if the entry was not found.
+    """
+    client = get_anthropic_client()
+
+    # --- Update JSON sidecar ---
+    json_data = load_3_whys_json(customer_dir)
+    found = False
+    for json_key in ["why_grafana", "why_now", "why_anything"]:
+        original_len = len(json_data[json_key]["calls"])
+        json_data[json_key]["calls"] = [
+            c for c in json_data[json_key]["calls"] if c.get("call_title") != call_title
+        ]
+        if len(json_data[json_key]["calls"]) < original_len:
+            found = True
+
+    # --- Update markdown ---
+    summary_path = customer_dir / "3_whys_summary.md"
+    md_changed = False
+    if summary_path.exists():
+        try:
+            content = summary_path.read_text(encoding="utf-8")
+        except Exception as e:
+            print(f"WARNING: Could not read {summary_path}: {e}", file=sys.stderr)
+            return False
+
+        # Remove the #### block for this call_title from each ## section.
+        # Match: #### {call_title} ... down to (not including) next #### or ---
+        escaped = re.escape(call_title)
+        new_content = re.sub(
+            rf"(?m)^####\s+{escaped}[^\n]*\n(?:(?!^####(?!#)|^---).*\n)*",
+            "",
+            content,
+        )
+        if new_content != content:
+            md_changed = True
+            # Clean up extra blank lines that may have been left
+            new_content = re.sub(r"\n{3,}", "\n\n", new_content)
+            try:
+                summary_path.write_text(new_content, encoding="utf-8")
+            except Exception as e:
+                print(f"WARNING: Could not write {summary_path}: {e}", file=sys.stderr)
+                return False
+
+    if not found and not md_changed:
+        print(f"  [3-whys] delete_entry: '{call_title}' not found — nothing to remove")
+        return False
+
+    json_data["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+    # Re-run synthesis if client is available
+    if client is not None:
+        syntheses = _generate_syntheses(client, json_data)
+        for why_key in ["why_grafana", "why_now", "why_anything"]:
+            if why_key in syntheses:
+                json_data[why_key]["synthesis"] = syntheses[why_key]
+
+        if summary_path.exists() and syntheses:
+            try:
+                content = summary_path.read_text(encoding="utf-8")
+                date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                content = _update_syntheses_in_content(content, syntheses, date_str)
+                summary_path.write_text(content, encoding="utf-8")
+            except Exception as e:
+                print(f"WARNING: Could not update synthesis in {summary_path}: {e}", file=sys.stderr)
+
+    save_3_whys_json(customer_dir, json_data)
+    print(f"  [3-whys] Removed '{call_title}' from 3_whys_summary.md and 3_whys.json")
+    return True
 
 
 def main():
