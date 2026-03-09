@@ -1,6 +1,8 @@
 # oppbot-v3
 
-A local tool for syncing Gong call transcripts from BigQuery, auto-routing them into customer folders, and enriching each account with tech stack and sales qualification data.
+Your pre-call intelligence terminal — sync, triage, and enrich customer data to understand your opportunities better.
+
+![oppbot screenshot](docs/screenshot.png)
 
 ---
 
