@@ -2,6 +2,8 @@
 
 ![oppbot screenshot](docs/screenshot.png)
 
+![data flow](docs/data-flow.svg)
+
 ---
 
 ## Requirements

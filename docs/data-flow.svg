@@ -1,0 +1,121 @@
+<svg width="1200" height="500" viewBox="0 0 1200 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#3a3d44"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="500" fill="#13141a"/>
+
+  <!-- Title -->
+  <text x="600" y="36" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="0.16em" fill="#3a3d44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">OPPBOT — DATA FLOW</text>
+
+  <!-- ═══════════════════════════════════════════
+       PHASE 1: Context Input
+  ════════════════════════════════════════════ -->
+  <rect x="30" y="52" width="340" height="426" rx="8" fill="#1c1d23" stroke="#272830" stroke-width="1"/>
+  <rect x="30" y="52" width="340" height="4" rx="2" fill="#4c9be8"/>
+
+  <text x="200" y="84" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4c9be8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">PHASE 1</text>
+  <text x="200" y="109" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Context Input</text>
+  <line x1="50" y1="124" x2="350" y2="124" stroke="#272830" stroke-width="1"/>
+
+  <!-- Gong -->
+  <rect x="50" y="139" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="50" y="139" width="3" height="82" rx="1" fill="#4c9be8"/>
+  <text x="66" y="159" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#4c9be8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">GONG</text>
+  <text x="66" y="177" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Gong call transcripts</text>
+  <text x="66" y="195" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Synced daily from BigQuery</text>
+  <text x="66" y="212" font-size="10" fill="#3a6fa8" font-family="'SF Mono', Menlo, 'Courier New', monospace">gong_fetch.py --sync</text>
+
+  <!-- Manual -->
+  <rect x="50" y="233" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="50" y="233" width="3" height="82" rx="1" fill="#4c9be8"/>
+  <text x="66" y="253" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#4c9be8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">MANUAL</text>
+  <text x="66" y="271" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Manual context</text>
+  <text x="66" y="289" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Notes, Slack, email pasted</text>
+  <text x="66" y="306" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">via Add Context in UI</text>
+
+  <!-- Future -->
+  <rect x="50" y="327" width="300" height="82" rx="6" fill="#171820" stroke="#252730" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="66" y="347" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#303340" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">FUTURE</text>
+  <text x="66" y="365" font-size="13" font-weight="600" fill="#3d3f50" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Additional data sources</text>
+  <text x="66" y="383" font-size="11" fill="#2e303c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">CRM, email, Slack, calendar,</text>
+  <text x="66" y="400" font-size="11" fill="#2e303c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">web research integrations</text>
+
+  <!-- Arrow 1 -->
+  <line x1="374" y1="265" x2="424" y2="265" stroke="#2e3038" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- ═══════════════════════════════════════════
+       PHASE 2: Routing & Triage
+  ════════════════════════════════════════════ -->
+  <rect x="430" y="52" width="340" height="426" rx="8" fill="#1c1d23" stroke="#272830" stroke-width="1"/>
+  <rect x="430" y="52" width="340" height="4" rx="2" fill="#e8a44c"/>
+
+  <text x="600" y="84" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#e8a44c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">PHASE 2</text>
+  <text x="600" y="109" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Routing &amp; Triage</text>
+  <line x1="450" y1="124" x2="750" y2="124" stroke="#272830" stroke-width="1"/>
+
+  <!-- Auto-route -->
+  <rect x="450" y="139" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="450" y="139" width="3" height="82" rx="1" fill="#e8a44c"/>
+  <text x="466" y="159" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#e8a44c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">AUTO-ROUTE</text>
+  <text x="466" y="177" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Alias pattern matching</text>
+  <text x="466" y="195" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Call titles matched against</text>
+  <text x="466" y="212" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">saved routing aliases</text>
+
+  <!-- Triage queue -->
+  <rect x="450" y="233" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="450" y="233" width="3" height="82" rx="1" fill="#e8a44c"/>
+  <text x="466" y="253" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#e8a44c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">TRIAGE QUEUE</text>
+  <text x="466" y="271" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Manual review</text>
+  <text x="466" y="289" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Unmatched calls reviewed</text>
+  <text x="466" y="306" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">and routed to accounts</text>
+
+  <!-- Output -->
+  <rect x="450" y="327" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="450" y="327" width="3" height="82" rx="1" fill="#e8a44c"/>
+  <text x="466" y="347" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#e8a44c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">OUTPUT</text>
+  <text x="466" y="365" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Customer folders</text>
+  <text x="466" y="383" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Transcripts written into</text>
+  <text x="466" y="400" font-size="10" fill="#a07030" font-family="'SF Mono', Menlo, 'Courier New', monospace">/account-name/ folders</text>
+
+  <!-- Arrow 2 -->
+  <line x1="774" y1="265" x2="824" y2="265" stroke="#2e3038" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- ═══════════════════════════════════════════
+       PHASE 3: AI Enrichment
+  ════════════════════════════════════════════ -->
+  <rect x="830" y="52" width="340" height="426" rx="8" fill="#1c1d23" stroke="#272830" stroke-width="1"/>
+  <rect x="830" y="52" width="340" height="4" rx="2" fill="#4ce89a"/>
+
+  <text x="1000" y="84" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4ce89a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">PHASE 3</text>
+  <text x="1000" y="109" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">AI Enrichment</text>
+  <line x1="850" y1="124" x2="1150" y2="124" stroke="#272830" stroke-width="1"/>
+
+  <!-- Tech Stack -->
+  <rect x="850" y="139" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="850" y="139" width="3" height="82" rx="1" fill="#4ce89a"/>
+  <text x="866" y="159" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#4ce89a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">TECH STACK</text>
+  <text x="866" y="177" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Infrastructure analysis</text>
+  <text x="866" y="195" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Tools, languages, cloud infra</text>
+  <text x="866" y="212" font-size="10" fill="#2e8a5c" font-family="'SF Mono', Menlo, 'Courier New', monospace">tech_stack.md per account</text>
+
+  <!-- 3 Whys -->
+  <rect x="850" y="233" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="850" y="233" width="3" height="82" rx="1" fill="#4ce89a"/>
+  <text x="866" y="253" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#4ce89a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">3 WHYS</text>
+  <text x="866" y="271" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Buying motivation</text>
+  <text x="866" y="289" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Why anything · why now ·</text>
+  <text x="866" y="306" font-size="10" fill="#2e8a5c" font-family="'SF Mono', Menlo, 'Courier New', monospace">3_whys_summary.md</text>
+
+  <!-- Output -->
+  <rect x="850" y="327" width="300" height="82" rx="6" fill="#1e1f26" stroke="#2d2f38" stroke-width="1"/>
+  <rect x="850" y="327" width="3" height="82" rx="1" fill="#4ce89a"/>
+  <text x="866" y="347" font-size="10" font-weight="700" letter-spacing="0.1em" fill="#4ce89a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">OUTPUT</text>
+  <text x="866" y="365" font-size="13" font-weight="600" fill="#e2e4ea" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Pre-call intelligence</text>
+  <text x="866" y="383" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Account-level context ready</text>
+  <text x="866" y="400" font-size="11" fill="#5c5f6e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">for pre-call preparation</text>
+
+</svg>
