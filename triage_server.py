@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Load .env from repo root if present
@@ -27,14 +28,17 @@ except ImportError:
     print("Flask is not installed. Run: pip install flask")
     sys.exit(1)
 
+# In-memory job progress tracking: manual_id → {steps, done, error}
+_job_status: dict = {}
+
 try:
-    from tech_stack_update import update_tech_stack
+    from tech_stack_update import update_tech_stack, delete_entry as _ts_delete_entry
     TECH_STACK_AVAILABLE = True
 except ImportError:
     TECH_STACK_AVAILABLE = False
 
 try:
-    from three_whys_update import update_3_whys
+    from three_whys_update import update_3_whys, delete_entry as _3w_delete_entry
     THREE_WHYS_AVAILABLE = True
 except ImportError:
     THREE_WHYS_AVAILABLE = False
@@ -106,12 +110,43 @@ def api_customers():
     return jsonify(sorted(d.name for d in dirs))
 
 
+def _load_manual_manifest(customer_dir: Path) -> list:
+    """Load ~/customers/<customer>/manual/manifest.json, return list (empty if missing)."""
+    manifest_path = customer_dir / "manual" / "manifest.json"
+    if manifest_path.exists():
+        try:
+            return json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+
+def _save_manual_manifest(customer_dir: Path, entries: list):
+    manual_dir = customer_dir / "manual"
+    manual_dir.mkdir(parents=True, exist_ok=True)
+    tmp = manual_dir / ".manifest.json.tmp"
+    final = manual_dir / "manifest.json"
+    tmp.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+    tmp.rename(final)
+
+
 @app.route('/api/markdown/tech-stack/<customer>')
 def api_tech_stack(customer):
     path = CUSTOMERS_DIR / customer / 'tech_stack.md'
     if not path.exists():
         return jsonify({'error': 'not found', 'dir': str(CUSTOMERS_DIR / customer)}), 404
-    return jsonify({'content': path.read_text(encoding='utf-8'), 'path': str(path), 'dir': str(path.parent)})
+    entries = _load_manual_manifest(CUSTOMERS_DIR / customer)
+    manual_entries = [
+        {'manual_id': e['manual_id'], 'call_title': e['call_title']}
+        for e in entries
+        if 'tech-stack' in e.get('targets', [])
+    ]
+    return jsonify({
+        'content': path.read_text(encoding='utf-8'),
+        'path': str(path),
+        'dir': str(path.parent),
+        'manual_entries': manual_entries,
+    })
 
 
 @app.route('/api/markdown/3-whys/<customer>')
@@ -119,7 +154,18 @@ def api_3_whys(customer):
     path = CUSTOMERS_DIR / customer / '3_whys_summary.md'
     if not path.exists():
         return jsonify({'error': 'not found', 'dir': str(CUSTOMERS_DIR / customer)}), 404
-    return jsonify({'content': path.read_text(encoding='utf-8'), 'path': str(path), 'dir': str(path.parent)})
+    entries = _load_manual_manifest(CUSTOMERS_DIR / customer)
+    manual_entries = [
+        {'manual_id': e['manual_id'], 'call_title': e['call_title']}
+        for e in entries
+        if '3-whys' in e.get('targets', [])
+    ]
+    return jsonify({
+        'content': path.read_text(encoding='utf-8'),
+        'path': str(path),
+        'dir': str(path.parent),
+        'manual_entries': manual_entries,
+    })
 
 
 @app.route('/api/add-alias', methods=['POST'])
@@ -269,6 +315,153 @@ def api_skip():
     save_manifest(PROCESSED_GONG_DIR, proc_manifest)
 
     return jsonify({"ok": True})
+
+
+@app.route('/api/add-context-status/<manual_id>', methods=['GET'])
+def api_add_context_status(manual_id):
+    return jsonify(_job_status.get(manual_id, {"done": True, "steps": [], "error": "not found"}))
+
+
+@app.route('/api/add-context/<customer>', methods=['POST'])
+def api_add_context(customer):
+    customer_dir = CUSTOMERS_DIR / customer
+    if not customer_dir.exists():
+        return jsonify({'error': f'Unknown customer: {customer}'}), 404
+
+    data = request.get_json(force=True)
+    title = (data.get('title') or '').strip()
+    text = (data.get('text') or '').strip()
+    targets = data.get('targets', ['3-whys', 'tech-stack'])
+
+    if not text:
+        return jsonify({'error': 'text is required'}), 400
+
+    now = datetime.now(timezone.utc)
+    manual_id = now.strftime('%Y%m%d_%H%M%S')
+    date_str = now.strftime('%Y-%m-%d')
+    datetime_str = now.strftime('%Y-%m-%d %H:%M')
+    created_at = now.isoformat()
+
+    display_title = title if title else 'Manual Entry'
+    call_title = f"[Manual] {display_title} — {datetime_str}"
+
+    manual_content = f"""# {call_title}
+
+| Field | Value |
+|---|---|
+| **Date** | {date_str} |
+| **Added** | {created_at} |
+| **Source** | Manual Entry |
+
+---
+
+## Context
+
+{text}
+"""
+
+    manual_dir = customer_dir / "manual"
+    manual_dir.mkdir(parents=True, exist_ok=True)
+    manual_file = manual_dir / f"{manual_id}.md"
+    try:
+        manual_file.write_text(manual_content, encoding="utf-8")
+    except Exception as e:
+        return jsonify({'error': f'Could not write file: {e}'}), 500
+
+    # Update manifest
+    entries = _load_manual_manifest(customer_dir)
+    entries.append({
+        'manual_id': manual_id,
+        'call_title': call_title,
+        'targets': targets,
+        'created_at': created_at,
+    })
+    _save_manual_manifest(customer_dir, entries)
+
+    # Build step list for progress tracking
+    steps = [{"label": "Writing context file", "state": "done"}]
+    if '3-whys' in targets and THREE_WHYS_AVAILABLE:
+        steps.append({"label": "Extracting 3 Whys evidence", "state": "pending"})
+        steps.append({"label": "Updating 3 Whys synthesis", "state": "pending"})
+    if 'tech-stack' in targets and TECH_STACK_AVAILABLE:
+        steps.append({"label": "Extracting tech stack facts", "state": "pending"})
+        steps.append({"label": "Updating tech stack summary", "state": "pending"})
+    _job_status[manual_id] = {"steps": steps, "done": False, "error": None}
+
+    def make_callback(mid):
+        def callback(label):
+            job = _job_status.get(mid)
+            if not job:
+                return
+            s = job["steps"]
+            # Mark the currently active step done
+            for step in s:
+                if step["state"] == "active":
+                    step["state"] = "done"
+                    break
+            # Mark the matching pending step active
+            for step in s:
+                if step["label"] == label and step["state"] == "pending":
+                    step["state"] = "active"
+                    break
+        return callback
+
+    # Spawn background enrichment
+    def enrich():
+        cb = make_callback(manual_id)
+        try:
+            if '3-whys' in targets and THREE_WHYS_AVAILABLE:
+                update_3_whys(manual_file, customer_dir, progress_callback=cb)
+            if 'tech-stack' in targets and TECH_STACK_AVAILABLE:
+                update_tech_stack(manual_file, customer_dir, progress_callback=cb)
+        except Exception as e:
+            if manual_id in _job_status:
+                _job_status[manual_id]["error"] = str(e)
+        finally:
+            if manual_id in _job_status:
+                # Mark any remaining active/pending steps done
+                for step in _job_status[manual_id]["steps"]:
+                    if step["state"] in ("active", "pending"):
+                        step["state"] = "done"
+                _job_status[manual_id]["done"] = True
+
+    threading.Thread(target=enrich, daemon=True).start()
+
+    return jsonify({'status': 'processing', 'manual_id': manual_id})
+
+
+@app.route('/api/delete-manual/<customer>/<manual_id>', methods=['DELETE'])
+def api_delete_manual(customer, manual_id):
+    customer_dir = CUSTOMERS_DIR / customer
+    if not customer_dir.exists():
+        return jsonify({'error': f'Unknown customer: {customer}'}), 404
+
+    entries = _load_manual_manifest(customer_dir)
+    entry = next((e for e in entries if e.get('manual_id') == manual_id), None)
+    if entry is None:
+        return jsonify({'error': f'manual_id not found: {manual_id}'}), 404
+
+    call_title = entry['call_title']
+    targets = entry.get('targets', [])
+
+    # Remove from markdown files
+    if '3-whys' in targets and THREE_WHYS_AVAILABLE:
+        _3w_delete_entry(call_title, customer_dir)
+    if 'tech-stack' in targets and TECH_STACK_AVAILABLE:
+        _ts_delete_entry(call_title, customer_dir)
+
+    # Remove the manual file
+    manual_file = customer_dir / "manual" / f"{manual_id}.md"
+    try:
+        manual_file.unlink(missing_ok=True)
+    except Exception as e:
+        print(f"WARNING: Could not remove {manual_file}: {e}", file=sys.stderr)
+
+    # Remove from manifest
+    entries = [e for e in entries if e.get('manual_id') != manual_id]
+    _save_manual_manifest(customer_dir, entries)
+
+    return jsonify({'status': 'ok'})
 
 
 if __name__ == "__main__":

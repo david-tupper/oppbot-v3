@@ -566,6 +566,352 @@
   .markdown-pane a:hover { color: #b8d0ff; }
   .placeholder { color: var(--text-muted); font-style: italic; }
   .hint-sep { color: var(--border); }
+
+  /* Intel view header row (h2 + Add Context button) */
+  .intel-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 20px 0 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+
+  .intel-header-row h2 {
+    margin: 0;
+    border: none;
+    padding: 0;
+    font-size: 16px;
+  }
+
+  .add-context-btn {
+    background: #f46800;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+    flex-shrink: 0;
+  }
+
+  .add-context-btn:hover {
+    background: #d95c00;
+    color: #fff;
+  }
+
+  /* Delete button inline next to [Manual] headers */
+  .manual-delete-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 5px;
+    margin-left: 8px;
+    line-height: 1.4;
+    vertical-align: middle;
+    font-family: var(--mono);
+  }
+
+  .manual-delete-btn:hover {
+    background: #3a1a1a;
+    border-color: #7a3030;
+    color: #f5a0a0;
+  }
+
+  /* Tooltip icon */
+  .tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    font-size: 9px;
+    font-style: normal;
+    cursor: default;
+    margin-left: 5px;
+    vertical-align: middle;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .tooltip-icon .tooltip-text {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 6px 8px;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .tooltip-icon:hover .tooltip-text {
+    display: block;
+  }
+
+  /* Add Context modal */
+  #add-context-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0,0,0,0.5);
+  }
+
+  #add-context-modal-backdrop.visible { display: block; }
+
+  #add-context-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    padding: 20px;
+  }
+
+  #add-context-modal h3 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .modal-field {
+    margin-bottom: 14px;
+  }
+
+  .modal-field label {
+    display: block;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .modal-field input[type="text"],
+  .modal-field textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    padding: 7px 10px;
+    outline: none;
+    resize: vertical;
+  }
+
+  .modal-field input[type="text"]:focus,
+  .modal-field textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .modal-field textarea {
+    min-height: 140px;
+    line-height: 1.5;
+  }
+
+  .modal-checkboxes {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+
+  .modal-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-dim);
+    cursor: pointer;
+  }
+
+  .modal-checkboxes input[type="checkbox"]:disabled + span {
+    opacity: 0.5;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .modal-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 14px;
+  }
+
+  .modal-btn:hover {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .modal-btn.primary {
+    background: var(--selected-bg);
+    border-color: var(--selected-border);
+    color: var(--text);
+  }
+
+  .modal-btn.primary:hover {
+    background: var(--accent-dim);
+  }
+
+  .modal-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .modal-status {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    margin-right: auto;
+    align-self: center;
+  }
+
+  /* Delete modal */
+  #delete-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0,0,0,0.5);
+  }
+
+  #delete-modal-backdrop.visible { display: block; }
+
+  #delete-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    padding: 20px;
+  }
+
+  #delete-modal h3 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .del-warning-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin: 0 0 20px;
+    line-height: 1.5;
+  }
+
+  .del-status-text {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    margin: 0 0 20px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+
+  .modal-btn.danger {
+    background: #5c1f1f;
+    border-color: #8b2e2e;
+    color: #e08080;
+  }
+
+  .modal-btn.danger:hover {
+    background: #7a2020;
+    color: #f0a0a0;
+  }
+
+  /* Progress indicator */
+  #ctx-progress {
+    display: none;
+    margin-bottom: 16px;
+  }
+
+  #ctx-progress.visible { display: block; }
+
+  .progress-bar-track {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .progress-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .progress-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+
+  .step-icon {
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .progress-step.step-pending { color: var(--text-dim); opacity: 0.5; }
+  .progress-step.step-active  { color: var(--text); }
+  .progress-step.step-done    { color: #6a9f6a; }
+  .progress-step.step-error   { color: #e05252; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .step-active .step-icon { display: inline-block; animation: spin 1s linear infinite; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -641,6 +987,53 @@
   </div>
 </div>
 
+<!-- Add Context modal -->
+<div id="add-context-modal-backdrop">
+  <div id="add-context-modal">
+    <h3>Add Manual Context</h3>
+    <div id="ctx-input-area">
+      <div class="modal-field">
+        <label>Title (optional)</label>
+        <input id="ctx-title" type="text" placeholder="e.g., Slack conversation with John" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="modal-field">
+        <label>Context</label>
+        <textarea id="ctx-text" rows="8" placeholder="Paste notes, Slack messages, email threads, or any relevant context…"></textarea>
+      </div>
+      <div class="modal-checkboxes">
+        <label><input type="checkbox" id="ctx-target-3whys"> <span>3 Whys</span><i class="tooltip-icon">i<span class="tooltip-text">Checked by default when adding from 3 Whys.<br>Can also be added when submitting from Tech Stack.</span></i></label>
+        <label><input type="checkbox" id="ctx-target-techstack"> <span>Tech Stack</span><i class="tooltip-icon">i<span class="tooltip-text">Checked by default when adding from Tech Stack.<br>Can also be added when submitting from 3 Whys.</span></i></label>
+      </div>
+    </div>
+    <div id="ctx-progress">
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="ctx-progress-bar" style="width:0%"></div></div>
+      <ul class="progress-steps" id="ctx-progress-steps"></ul>
+    </div>
+    <div class="modal-actions">
+      <span class="modal-status" id="ctx-status"></span>
+      <button class="modal-btn" id="ctx-cancel-btn">Cancel</button>
+      <button class="modal-btn primary" id="ctx-add-btn">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation modal -->
+<div id="delete-modal-backdrop">
+  <div id="delete-modal">
+    <h3>Delete Manual Entry</h3>
+    <div id="del-confirm-area">
+      <p class="del-warning-text">Delete this manual entry? This cannot be undone.</p>
+    </div>
+    <div id="del-deleting-area" style="display:none">
+      <p class="del-status-text" id="del-status-text">Deleting…</p>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="del-cancel-btn">Cancel</button>
+      <button class="modal-btn danger" id="del-confirm-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Routing overlay -->
 <div id="overlay-backdrop"></div>
 <div id="routing-overlay" style="display:none">
@@ -680,6 +1073,10 @@
   let activeView = 'triage';
   let selectedCustomer = null;
   let pendingRoute = null; // { destDir, create, call, removed }
+
+  // Manual context modal state
+  let ctxModalView = null;   // 'tech-stack' or '3-whys' — which tab opened the modal
+  let ctxManualEntries = {}; // { 'tech-stack': [...], '3-whys': [...] } from last API response
 
   // -------------------------------------------------------------------------
   // DOM refs
@@ -1223,14 +1620,279 @@
           document.getElementById(pathBarId).style.display = 'none';
         }
 
-        document.getElementById(contentId).innerHTML = ok
-          ? marked.parse(data.content)
-          : '<p class="placeholder">No file yet for this customer.</p>';
+        const contentEl = document.getElementById(contentId);
+        if (ok) {
+          // Store manual entries for this view
+          ctxManualEntries[view] = data.manual_entries || [];
+
+          // Parse markdown to HTML
+          const html = marked.parse(data.content);
+          contentEl.innerHTML = html;
+
+          // Inject "+ Add Context" button next to each h2 (3-whys) or h1 (tech-stack)
+          const btnHeaderTag = view === 'tech-stack' ? 'h1' : 'h2';
+          contentEl.querySelectorAll(btnHeaderTag).forEach(hdr => {
+            const row = document.createElement('div');
+            row.className = 'intel-header-row';
+            hdr.parentNode.insertBefore(row, hdr);
+            hdr.remove();
+            row.appendChild(hdr);
+            hdr.style.border = 'none';
+            hdr.style.padding = '0';
+            hdr.style.margin = '0';
+
+            const btn = document.createElement('button');
+            btn.className = 'add-context-btn';
+            btn.textContent = '+ Add Context';
+            btn.addEventListener('click', () => openAddContextModal(view, name));
+            row.appendChild(btn);
+          });
+
+          // Inject delete buttons next to [Manual] headers
+          // For 3-whys: h4 elements; for tech-stack: h3 elements
+          const headerTag = view === '3-whys' ? 'h4' : 'h3';
+          const manualEntries = ctxManualEntries[view] || [];
+          contentEl.querySelectorAll(headerTag).forEach(hdr => {
+            const text = hdr.textContent || '';
+            if (!text.startsWith('[Manual]')) return;
+            // Find the matching manual entry by call_title prefix match
+            const entry = manualEntries.find(e => text.startsWith(e.call_title) || e.call_title.startsWith(text.split(' ([')[0]));
+            if (!entry) return;
+            const delBtn = document.createElement('button');
+            delBtn.className = 'manual-delete-btn';
+            delBtn.textContent = '×';
+            delBtn.title = 'Delete this manual entry';
+            delBtn.addEventListener('click', () => deleteManualEntry(name, entry.manual_id, view));
+            hdr.appendChild(delBtn);
+          });
+        } else {
+          ctxManualEntries[view] = [];
+          contentEl.innerHTML = '<p class="placeholder">No file yet for this customer.</p>';
+        }
       })
       .catch(() => {
         document.getElementById(pathBarId).style.display = 'none';
         document.getElementById(contentId).innerHTML = '<p class="placeholder">No file yet for this customer.</p>';
+        ctxManualEntries[view] = [];
       });
+  }
+
+  // -------------------------------------------------------------------------
+  // Add Context modal
+  // -------------------------------------------------------------------------
+  const ctxModalBackdrop = document.getElementById('add-context-modal-backdrop');
+  const ctxAddBtn = document.getElementById('ctx-add-btn');
+  const ctxCancelBtn = document.getElementById('ctx-cancel-btn');
+  const ctxStatus = document.getElementById('ctx-status');
+  const ctx3Whys = document.getElementById('ctx-target-3whys');
+  const ctxTechStack = document.getElementById('ctx-target-techstack');
+
+  function openAddContextModal(view, customer) {
+    ctxModalView = view;
+    // Reset form
+    document.getElementById('ctx-title').value = '';
+    document.getElementById('ctx-text').value = '';
+    ctxStatus.textContent = '';
+    ctxStatus.style.color = '';
+    ctxAddBtn.disabled = false;
+    ctxCancelBtn.disabled = false;
+
+    // Show input area, hide progress
+    document.getElementById('ctx-input-area').style.display = '';
+    document.getElementById('ctx-progress').classList.remove('visible');
+    document.getElementById('ctx-progress-steps').innerHTML = '';
+    document.getElementById('ctx-progress-bar').style.width = '0%';
+
+    // Current tab's checkbox: checked + disabled. Other tab: unchecked + enabled.
+    ctx3Whys.checked = view === '3-whys';
+    ctx3Whys.disabled = view === '3-whys';
+    ctxTechStack.checked = view === 'tech-stack';
+    ctxTechStack.disabled = view === 'tech-stack';
+
+    ctxModalBackdrop.classList.add('visible');
+    document.getElementById('ctx-title').focus();
+  }
+
+  function closeAddContextModal() {
+    ctxModalBackdrop.classList.remove('visible');
+    ctxModalView = null;
+  }
+
+  ctxModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === ctxModalBackdrop && !ctxCancelBtn.disabled) closeAddContextModal();
+  });
+
+  ctxCancelBtn.addEventListener('click', closeAddContextModal);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && ctxModalBackdrop.classList.contains('visible') && !ctxCancelBtn.disabled) {
+      closeAddContextModal();
+    }
+  });
+
+  function renderProgressSteps(steps) {
+    const stepsEl = document.getElementById('ctx-progress-steps');
+    const barEl = document.getElementById('ctx-progress-bar');
+    const icons = { pending: '○', active: '◉', done: '✓', error: '×' };
+    stepsEl.innerHTML = steps.map(s =>
+      `<li class="progress-step step-${s.state}"><span class="step-icon">${icons[s.state] || '○'}</span>${s.label}</li>`
+    ).join('');
+    const total = steps.length;
+    const done = steps.filter(s => s.state === 'done').length;
+    barEl.style.width = total ? Math.round(done / total * 100) + '%' : '0%';
+  }
+
+  ctxAddBtn.addEventListener('click', async () => {
+    const title = document.getElementById('ctx-title').value.trim();
+    const text = document.getElementById('ctx-text').value.trim();
+    if (!text) {
+      ctxStatus.textContent = 'Context text is required.';
+      return;
+    }
+
+    const targets = [];
+    if (ctx3Whys.checked) targets.push('3-whys');
+    if (ctxTechStack.checked) targets.push('tech-stack');
+    if (targets.length === 0) {
+      ctxStatus.textContent = 'Select at least one target.';
+      return;
+    }
+
+    ctxAddBtn.disabled = true;
+    ctxCancelBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/add-context/' + encodeURIComponent(selectedCustomer), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, text, targets }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || res.statusText);
+
+      const manualId = body.manual_id;
+
+      // Switch to progress view
+      document.getElementById('ctx-input-area').style.display = 'none';
+      document.getElementById('ctx-progress').classList.add('visible');
+      ctxStatus.textContent = '';
+
+      // Poll for progress
+      let pollErrors = 0;
+      const MAX_POLL_ERRORS = 20; // 30s of consecutive failures before giving up
+      const pollInterval = setInterval(async () => {
+        try {
+          const sr = await fetch('/api/add-context-status/' + encodeURIComponent(manualId));
+          const status = await sr.json();
+          pollErrors = 0;
+          renderProgressSteps(status.steps || []);
+
+          if (status.error) {
+            clearInterval(pollInterval);
+            ctxStatus.textContent = 'Error: ' + status.error;
+            ctxStatus.style.color = '#e05252';
+            ctxCancelBtn.disabled = false;
+            return;
+          }
+
+          if (status.done) {
+            clearInterval(pollInterval);
+            ctxStatus.textContent = 'Complete!';
+            setTimeout(() => {
+              closeAddContextModal();
+              if (selectedCustomer) selectCustomer(ctxModalView || activeView, selectedCustomer);
+            }, 800);
+          }
+        } catch (_) {
+          pollErrors++;
+          if (pollErrors >= MAX_POLL_ERRORS) {
+            clearInterval(pollInterval);
+            ctxStatus.textContent = 'Server unreachable — check logs and reload.';
+            ctxStatus.style.color = '#e05252';
+            ctxCancelBtn.disabled = false;
+          }
+        }
+      }, 1500);
+
+    } catch (err) {
+      ctxStatus.textContent = 'Error: ' + err.message;
+      ctxAddBtn.disabled = false;
+      ctxCancelBtn.disabled = false;
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Delete manual entry
+  // -------------------------------------------------------------------------
+  const delModalBackdrop = document.getElementById('delete-modal-backdrop');
+  const delCancelBtn = document.getElementById('del-cancel-btn');
+  const delConfirmBtn = document.getElementById('del-confirm-btn');
+  const delStatusText = document.getElementById('del-status-text');
+
+  let _delPending = null; // { customer, manual_id, view }
+
+  function openDeleteModal(customer, manual_id, view) {
+    _delPending = { customer, manual_id, view };
+    document.getElementById('del-confirm-area').style.display = '';
+    document.getElementById('del-deleting-area').style.display = 'none';
+    delStatusText.textContent = 'Deleting…';
+    delStatusText.style.color = '';
+    delCancelBtn.disabled = false;
+    delConfirmBtn.disabled = false;
+    delConfirmBtn.style.display = '';
+    delModalBackdrop.classList.add('visible');
+  }
+
+  function closeDeleteModal() {
+    delModalBackdrop.classList.remove('visible');
+    _delPending = null;
+  }
+
+  delCancelBtn.addEventListener('click', closeDeleteModal);
+
+  delModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === delModalBackdrop && !delCancelBtn.disabled) closeDeleteModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && delModalBackdrop.classList.contains('visible') && !delCancelBtn.disabled) {
+      closeDeleteModal();
+    }
+  });
+
+  delConfirmBtn.addEventListener('click', async () => {
+    if (!_delPending) return;
+    const { customer, manual_id, view } = _delPending;
+
+    // Switch to deleting state
+    document.getElementById('del-confirm-area').style.display = 'none';
+    document.getElementById('del-deleting-area').style.display = '';
+    delCancelBtn.disabled = true;
+    delConfirmBtn.disabled = true;
+    delConfirmBtn.style.display = 'none';
+
+    try {
+      const res = await fetch(
+        '/api/delete-manual/' + encodeURIComponent(customer) + '/' + encodeURIComponent(manual_id),
+        { method: 'DELETE' }
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || res.statusText);
+
+      delStatusText.textContent = 'Deleted.';
+      setTimeout(() => {
+        closeDeleteModal();
+        selectCustomer(view, customer);
+      }, 600);
+    } catch (err) {
+      delStatusText.textContent = 'Error: ' + err.message;
+      delStatusText.style.color = '#e05252';
+      delCancelBtn.disabled = false;
+    }
+  });
+
+  function deleteManualEntry(customer, manual_id, view) {
+    openDeleteModal(customer, manual_id, view);
   }
 
   // -------------------------------------------------------------------------
