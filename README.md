@@ -1,7 +1,5 @@
 # oppbot-v3
 
-Your pre-call intelligence terminal — sync, triage, and enrich customer data to understand your opportunities better.
-
 ![oppbot screenshot](docs/screenshot.png)
 
 ---
