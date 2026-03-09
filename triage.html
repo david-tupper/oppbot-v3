@@ -954,8 +954,9 @@
   .home-table-row:last-child td { border-bottom:none; }
   .home-table-row td:first-child { color:var(--accent); font-family:var(--mono); white-space:nowrap; width:90px; }
   .home-table-row td:last-child { color:var(--text-dim); }
-  .home-flow { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
-  .home-flow-step { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px 16px; }
+  .home-flow { display:flex; align-items:stretch; gap:0; }
+  .home-flow-step { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px 16px; flex:1; }
+  .home-flow-arrow { display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text-muted); font-size:16px; padding:0 6px; }
   .home-flow-num { font-size:10px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
   .home-flow-label { font-size:12px; font-weight:600; color:var(--text); margin-bottom:3px; }
   .home-flow-desc { font-size:11px; color:var(--text-dim); }
@@ -1003,16 +1004,19 @@
             <div class="home-flow-label">Daily sync</div>
             <div class="home-flow-desc">oppbot --sync pulls Gong transcripts from BigQuery</div>
           </div>
+          <div class="home-flow-arrow">→</div>
           <div class="home-flow-step">
             <div class="home-flow-num">Step 2</div>
             <div class="home-flow-label">Auto-route</div>
             <div class="home-flow-desc">Routing aliases match calls to customers</div>
           </div>
+          <div class="home-flow-arrow">→</div>
           <div class="home-flow-step">
             <div class="home-flow-num">Step 3</div>
             <div class="home-flow-label">Triage queue</div>
             <div class="home-flow-desc">Unmatched calls wait for manual routing</div>
           </div>
+          <div class="home-flow-arrow">→</div>
           <div class="home-flow-step">
             <div class="home-flow-num">Step 4</div>
             <div class="home-flow-label">AI enrichment</div>
