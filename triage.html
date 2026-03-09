@@ -421,7 +421,7 @@
   #header { align-items: center; }
 
   /* Top-level nav */
-  #nav { display: flex; gap: 4px; }
+  #nav { display: flex; gap: 4px; align-items: center; flex: 1; }
 
   .nav-btn {
     background: transparent;
@@ -441,6 +441,28 @@
   }
 
   .nav-btn kbd { font-size: 10px; opacity: 0.6; }
+
+  #help-btn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  #help-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 
   .nav-badge {
     margin-left: 6px;
@@ -912,6 +934,43 @@
 
   @keyframes spin { to { transform: rotate(360deg); } }
   .step-active .step-icon { display: inline-block; animation: spin 1s linear infinite; }
+
+  /* Home view */
+  #home-view { display:flex; flex-direction:column; overflow-y:auto; flex:1; padding:32px 24px; }
+  #home-content { max-width:860px; margin:0 auto; }
+  .home-hero { text-align:center; padding:40px 0 32px; }
+  .home-hero-link { display:inline-block; margin-top:12px; font-family:var(--mono); font-size:12px; color:var(--text-muted); text-decoration:none; }
+  .home-hero-link:hover { color:var(--accent); }
+  .home-hero-title { font-size:clamp(24px,5vw,36px); font-weight:700; color:var(--text); letter-spacing:-1px; margin-bottom:8px; }
+  .home-hero-sub { font-size:clamp(13px,2vw,15px); color:var(--text-dim); }
+  .home-section { margin-bottom:36px; }
+  .home-section-title { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px; }
+  .home-cards-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+  .home-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px 18px; }
+  .home-card-title { font-size:13px; font-weight:600; color:var(--accent); margin-bottom:6px; }
+  .home-card-body { font-size:12px; color:var(--text-dim); line-height:1.6; }
+  .home-table { width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
+  .home-table-row td { padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:top; word-wrap:break-word; }
+  .home-table-row:last-child td { border-bottom:none; }
+  .home-table-row td:first-child { color:var(--accent); font-family:var(--mono); white-space:nowrap; width:90px; }
+  .home-table-row td:last-child { color:var(--text-dim); }
+  .home-flow { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
+  .home-flow-step { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px 16px; }
+  .home-flow-num { font-size:10px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
+  .home-flow-label { font-size:12px; font-weight:600; color:var(--text); margin-bottom:3px; }
+  .home-flow-desc { font-size:11px; color:var(--text-dim); }
+  .home-cli-grid { border:1px solid var(--border); border-radius:6px; overflow:hidden; font-size:12px; }
+  .home-cli-entry { display:flex; flex-direction:column; padding:9px 14px; gap:3px; }
+  .home-cli-entry:nth-child(even) { background:var(--surface); }
+  .home-cli-entry:nth-child(odd) { background:var(--bg); }
+  .home-cli-cmd { font-family:var(--mono); color:var(--accent); word-break:break-all; }
+  .home-cli-desc { color:var(--text-dim); }
+  .home-shortcut-groups { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+  .home-shortcut-group { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+  .home-shortcut-group-title { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; }
+  .home-shortcut-row { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; }
+  .home-shortcut-row kbd { background:var(--surface2); border:1px solid var(--border); border-radius:3px; padding:1px 5px; font-family:var(--mono); font-size:11px; color:var(--text); }
+  .home-shortcut-desc { color:var(--text-dim); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -920,13 +979,148 @@
   <div id="header">
     <h1>oppbot</h1>
     <div id="nav">
-      <button class="nav-btn active" data-view="triage">Triage<span id="triage-badge" class="nav-badge" style="display:none"></span></button>
+      <button class="nav-btn active" data-view="home">Home</button>
+      <button class="nav-btn" data-view="triage">Triage<span id="triage-badge" class="nav-badge" style="display:none"></span></button>
       <button class="nav-btn" data-view="tech-stack">Tech Stack</button>
       <button class="nav-btn" data-view="3-whys">3 Whys</button>
+      <a href="https://github.com/david-tupper/oppbot-v3" target="_blank" id="help-btn" title="GitHub repo">?</a>
     </div>
   </div>
 
-  <div id="triage-view">
+  <div id="home-view">
+    <div id="home-content">
+      <div class="home-hero">
+        <div class="home-hero-title">oppbot</div>
+        <div class="home-hero-sub">Your pre-call intelligence terminal — sync, triage, and enrich customer data to understand your opportunities better.</div>
+        <a href="https://github.com/david-tupper/oppbot-v3" target="_blank" class="home-hero-link">github.com/david-tupper/oppbot-v3</a>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">How it works</div>
+        <div class="home-flow">
+          <div class="home-flow-step">
+            <div class="home-flow-num">Step 1</div>
+            <div class="home-flow-label">Daily sync</div>
+            <div class="home-flow-desc">oppbot --sync pulls Gong transcripts from BigQuery</div>
+          </div>
+          <div class="home-flow-step">
+            <div class="home-flow-num">Step 2</div>
+            <div class="home-flow-label">Auto-route</div>
+            <div class="home-flow-desc">Routing aliases match calls to customers</div>
+          </div>
+          <div class="home-flow-step">
+            <div class="home-flow-num">Step 3</div>
+            <div class="home-flow-label">Triage queue</div>
+            <div class="home-flow-desc">Unmatched calls wait for manual routing</div>
+          </div>
+          <div class="home-flow-step">
+            <div class="home-flow-num">Step 4</div>
+            <div class="home-flow-label">AI enrichment</div>
+            <div class="home-flow-desc">Claude extracts tech stack &amp; 3 Whys intel</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">Tab 2 — Triage</div>
+        <div class="home-card" style="margin-bottom:10px">
+          <div class="home-card-body" style="font-size:13px;line-height:1.7">
+            The Triage queue is where unrouted Gong calls land. After each sync, calls that don't match a known routing alias appear here. Your job is to review each call and assign it to a customer folder.
+          </div>
+        </div>
+        <table class="home-table">
+          <tr class="home-table-row"><td>Columns</td><td style="color:var(--text-dim);font-weight:normal">Date · Organizer · Title · AI-generated summary · Transcript size (dimmed = short transcript, likely not useful)</td></tr>
+          <tr class="home-table-row"><td>Routing</td><td style="color:var(--text-dim);font-weight:normal">Press <kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:var(--mono);font-size:11px">Enter</kbd> on a selected call to open the routing overlay. Type to search existing customers or type a new name to create one. After routing you'll be asked for an optional alias — a phrase from the call title that will auto-route future calls from this customer.</td></tr>
+          <tr class="home-table-row"><td>Tabs</td><td style="color:var(--text-dim);font-weight:normal"><strong style="color:var(--text)">Unprocessed</strong> shows calls awaiting routing. <strong style="color:var(--text)">Processed</strong> shows already-routed calls.</td></tr>
+        </table>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">Tab 3 — Tech Stack</div>
+        <div class="home-card" style="margin-bottom:10px">
+          <div class="home-card-body" style="font-size:13px;line-height:1.7">
+            Shows per-customer tech stack intelligence extracted from Gong call transcripts by Claude AI.
+          </div>
+        </div>
+        <table class="home-table">
+          <tr class="home-table-row"><td>File</td><td style="color:var(--text-dim);font-weight:normal"><code style="font-family:var(--mono);background:var(--surface2);padding:1px 4px;border-radius:3px;font-size:11px">tech_stack.md</code> per customer folder</td></tr>
+          <tr class="home-table-row"><td>Built by</td><td style="color:var(--text-dim);font-weight:normal">Running <code style="font-family:var(--mono);background:var(--surface2);padding:1px 4px;border-radius:3px;font-size:11px">/update-tech-stack</code> in Claude Code after routing calls</td></tr>
+          <tr class="home-table-row"><td>Extracts</td><td style="color:var(--text-dim);font-weight:normal">Current monitoring tools · infrastructure (cloud/on-prem) · languages and frameworks · existing Grafana usage · integration context</td></tr>
+          <tr class="home-table-row"><td>Use for</td><td style="color:var(--text-dim);font-weight:normal">Pre-call prep — understand what the customer is running and where Grafana fits before you join</td></tr>
+        </table>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">Tab 4 — 3 Whys</div>
+        <div class="home-card" style="margin-bottom:10px">
+          <div class="home-card-body" style="font-size:13px;line-height:1.7">
+            Shows per-customer 3 Whys intelligence — the strategic buying narrative extracted from calls. The framework captures: <strong style="color:var(--text)">Why Anything</strong> (what pain is driving evaluation), <strong style="color:var(--text)">Why Now</strong> (the urgency or trigger), and <strong style="color:var(--text)">Why Grafana</strong> (the specific fit or differentiator).
+          </div>
+        </div>
+        <table class="home-table">
+          <tr class="home-table-row"><td>File</td><td style="color:var(--text-dim);font-weight:normal"><code style="font-family:var(--mono);background:var(--surface2);padding:1px 4px;border-radius:3px;font-size:11px">3_whys_summary.md</code> per customer folder</td></tr>
+          <tr class="home-table-row"><td>Built by</td><td style="color:var(--text-dim);font-weight:normal">Running <code style="font-family:var(--mono);background:var(--surface2);padding:1px 4px;border-radius:3px;font-size:11px">/update-3-whys</code> in Claude Code after routing calls</td></tr>
+          <tr class="home-table-row"><td>Extracts</td><td style="color:var(--text-dim);font-weight:normal">Evidence for each of the three questions with verbatim quotes from transcripts</td></tr>
+          <tr class="home-table-row"><td>Use for</td><td style="color:var(--text-dim);font-weight:normal">Sharpen your pitch, understand deal momentum, and identify gaps in your discovery</td></tr>
+        </table>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">Setup (first time)</div>
+        <div class="home-cli-grid">
+          <div class="home-cli-entry"><div class="home-cli-cmd">pip install google-cloud-bigquery flask</div><div class="home-cli-desc">Install Python dependencies</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">gcloud auth application-default login</div><div class="home-cli-desc">Authenticate with GCP for BigQuery access</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">python3 gong_fetch.py --init-owners</div><div class="home-cli-desc">Scaffold gong_owners.json — then edit it to add your team's Gong owner IDs</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">echo "127.0.0.1 oppbot.local" | sudo tee -a /etc/hosts</div><div class="home-cli-desc">Add local hostname so oppbot.local resolves (one time per machine)</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">echo "ANTHROPIC_API_KEY=sk-..." > .env</div><div class="home-cli-desc">Required for AI enrichment (tech stack, 3 Whys)</div></div>
+        </div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">CLI reference</div>
+        <div class="home-cli-grid">
+          <div class="home-cli-entry"><div class="home-cli-cmd">./triage.sh</div><div class="home-cli-desc">Start the server and open oppbot.local in your browser</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">python3 gong_fetch.py --sync</div><div class="home-cli-desc">Fetch latest calls from BigQuery and auto-route them</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">python3 gong_fetch.py --status</div><div class="home-cli-desc">Show sync status and call counts</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">python3 gong_fetch.py --account</div><div class="home-cli-desc">Show current account and data directory</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">python3 gong_fetch.py --nuke</div><div class="home-cli-desc">Reset all fetched data (keeps config)</div></div>
+          <div class="home-cli-entry"><div class="home-cli-cmd">./install-launchd.sh</div><div class="home-cli-desc">Install macOS LaunchAgent for daily auto-sync</div></div>
+        </div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">Keyboard shortcuts</div>
+        <div class="home-shortcut-groups">
+          <div class="home-shortcut-group">
+            <div class="home-shortcut-group-title">Global</div>
+            <div class="home-shortcut-row"><div><kbd>h</kbd> / <kbd>1</kbd></div><div class="home-shortcut-desc">Home</div></div>
+            <div class="home-shortcut-row"><div><kbd>2</kbd></div><div class="home-shortcut-desc">Triage view</div></div>
+            <div class="home-shortcut-row"><div><kbd>3</kbd></div><div class="home-shortcut-desc">Tech Stack view</div></div>
+            <div class="home-shortcut-row"><div><kbd>4</kbd></div><div class="home-shortcut-desc">3 Whys view</div></div>
+          </div>
+          <div class="home-shortcut-group">
+            <div class="home-shortcut-group-title">Triage</div>
+            <div class="home-shortcut-row"><div><kbd>↑</kbd> / <kbd>↓</kbd></div><div class="home-shortcut-desc">Navigate calls</div></div>
+            <div class="home-shortcut-row"><div><kbd>Enter</kbd></div><div class="home-shortcut-desc">Open routing overlay</div></div>
+            <div class="home-shortcut-row"><div><kbd>s</kbd></div><div class="home-shortcut-desc">Skip call</div></div>
+            <div class="home-shortcut-row"><div><kbd>u</kbd> / <kbd>p</kbd></div><div class="home-shortcut-desc">Unprocessed / Processed tab</div></div>
+          </div>
+          <div class="home-shortcut-group">
+            <div class="home-shortcut-group-title">Routing overlay</div>
+            <div class="home-shortcut-row"><div><kbd>↑</kbd> / <kbd>↓</kbd></div><div class="home-shortcut-desc">Navigate suggestions</div></div>
+            <div class="home-shortcut-row"><div><kbd>Enter</kbd></div><div class="home-shortcut-desc">Confirm route</div></div>
+            <div class="home-shortcut-row"><div><kbd>Esc</kbd></div><div class="home-shortcut-desc">Cancel</div></div>
+          </div>
+          <div class="home-shortcut-group">
+            <div class="home-shortcut-group-title">Intel views (Tech Stack / 3 Whys)</div>
+            <div class="home-shortcut-row"><div><kbd>↑</kbd> / <kbd>↓</kbd></div><div class="home-shortcut-desc">Navigate customers</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="triage-view" style="display:none">
     <div id="triage-nav-panel">
       <div class="triage-tab-item active" data-tab="unprocessed">Unprocessed<span class="triage-tab-count" id="unprocessed-count">…</span></div>
       <div class="triage-tab-item" data-tab="processed">Processed<span class="triage-tab-count" id="processed-count">0</span></div>
@@ -975,15 +1169,12 @@
   </div>
 
   <div id="hint-bar">
-    <span class="hint-item"><kbd>↑</kbd>/<kbd>↓</kbd> navigate</span>
-    <span class="hint-item hint-skip"><kbd>s</kbd> skip</span>
-    <span class="hint-item"><kbd>Enter</kbd> route</span>
-    <span class="hint-item"><kbd>u</kbd>/<kbd>p</kbd> switch tab</span>
-    <span class="hint-item"><kbd>Esc</kbd> cancel</span>
+    <span class="hint-item"><kbd>2</kbd>/<kbd>3</kbd>/<kbd>4</kbd> switch view</span>
     <span class="hint-sep"> | </span>
-    <span class="hint-item"><kbd>1</kbd> Triage</span>
-    <span class="hint-item"><kbd>2</kbd> Tech Stack</span>
-    <span class="hint-item"><kbd>3</kbd> 3 Whys</span>
+    <span class="hint-item"><kbd>1</kbd> Home</span>
+    <span class="hint-item"><kbd>2</kbd> Triage</span>
+    <span class="hint-item"><kbd>3</kbd> Tech Stack</span>
+    <span class="hint-item"><kbd>4</kbd> 3 Whys</span>
   </div>
 </div>
 
@@ -1070,7 +1261,7 @@
   let routingOpen = false;
   let acIndex = 0;         // autocomplete selected index
   let activeTab = 'unprocessed';
-  let activeView = 'triage';
+  let activeView = 'home';
   let selectedCustomer = null;
   let pendingRoute = null; // { destDir, create, call, removed }
 
@@ -1109,7 +1300,7 @@
     updateTabCounts();
     updateHintBar();
     render();
-    listContainer.focus();
+    if (activeView === 'triage') listContainer.focus();
   }
 
   function updateTabCounts() {
@@ -1138,8 +1329,10 @@
 
   function updateHintBar() {
     const bar = document.getElementById('hint-bar');
-    const navHints = `<span class="hint-sep"> | </span><span class="hint-item"><kbd>1</kbd> Triage</span><span class="hint-item"><kbd>2</kbd> Tech Stack</span><span class="hint-item"><kbd>3</kbd> 3 Whys</span>`;
-    if (activeView === 'triage') {
+    const navHints = `<span class="hint-sep"> | </span><span class="hint-item"><kbd>1</kbd> Home</span><span class="hint-item"><kbd>2</kbd> Triage</span><span class="hint-item"><kbd>3</kbd> Tech Stack</span><span class="hint-item"><kbd>4</kbd> 3 Whys</span>`;
+    if (activeView === 'home') {
+      bar.innerHTML = `<span class="hint-item"><kbd>2</kbd>/<kbd>3</kbd>/<kbd>4</kbd> switch view</span>` + navHints;
+    } else if (activeView === 'triage') {
       const skipDisplay = activeTab === 'unprocessed' ? '' : 'none';
       bar.innerHTML =
         `<span class="hint-item"><kbd>↑</kbd>/<kbd>↓</kbd> navigate</span>` +
@@ -1165,6 +1358,7 @@
 
   function switchView(view) {
     activeView = view;
+    document.getElementById('home-view').style.display = view === 'home' ? '' : 'none';
     document.getElementById('triage-view').style.display = view === 'triage' ? '' : 'none';
     document.getElementById('tech-stack-view').style.display = view === 'tech-stack' ? '' : 'none';
     document.getElementById('3-whys-view').style.display = view === '3-whys' ? '' : 'none';
@@ -1172,7 +1366,7 @@
       btn.classList.toggle('active', btn.dataset.view === view);
     });
     updateHintBar();
-    if (view !== 'triage' && customers.length > 0) {
+    if (view !== 'triage' && view !== 'home' && customers.length > 0) {
       const panelId = view === 'tech-stack' ? 'ts-customer-list' : 'tw-customer-list';
       const searchId = view === 'tech-stack' ? 'ts-search' : 'tw-search';
       const filter = document.getElementById(searchId)?.value || '';
@@ -1180,6 +1374,7 @@
       renderCustomerList(panelId, view, filter);
       selectCustomer(view, selectedCustomer);
     } else if (view === 'triage') {
+      reflowColWidths();   // recalc --cols now that triage is visible
       listContainer.focus();
     }
   }
@@ -1258,26 +1453,35 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
     switch (e.key) {
+      case '0':
       case '1':
         e.preventDefault();
-        switchView('triage');
+        switchView('home');
+        break;
+      case 'h':
+        e.preventDefault();
+        switchView('home');
         break;
       case '2':
         e.preventDefault();
-        switchView('tech-stack');
+        switchView('triage');
         break;
       case '3':
+        e.preventDefault();
+        switchView('tech-stack');
+        break;
+      case '4':
         e.preventDefault();
         switchView('3-whys');
         break;
       case 'ArrowUp':
-        if (activeView === 'triage') return;
+        if (activeView === 'triage' || activeView === 'home') return;
         e.preventDefault();
         { const idx = customers.indexOf(selectedCustomer);
           if (idx > 0) selectCustomer(activeView, customers[idx - 1]); }
         break;
       case 'ArrowDown':
-        if (activeView === 'triage') return;
+        if (activeView === 'triage' || activeView === 'home') return;
         e.preventDefault();
         { const idx = customers.indexOf(selectedCustomer);
           if (idx < customers.length - 1) selectCustomer(activeView, customers[idx + 1]); }
