@@ -1843,6 +1843,7 @@
   async function doSkip() {
     if (calls.length === 0 || activeTab !== 'unprocessed') return;
     const call = calls[cursor];
+    const origIndex = cursor;
     const removed = calls.splice(cursor, 1);
     cursor = Math.min(cursor, calls.length - 1);
     updateTabCounts();
@@ -1856,8 +1857,10 @@
         body: JSON.stringify({ pkey_id: call.pkey_id }),
       });
       if (!res.ok) throw new Error(await res.text());
+      processedCalls.push(call);
     } catch (err) {
-      calls.splice(cursor, 0, ...removed);
+      calls.splice(origIndex, 0, ...removed);
+      cursor = origIndex;
       updateTabCounts();
       render();
       showToast('Skip failed: ' + err.message);
@@ -2046,6 +2049,7 @@
     const { destDir, create, call } = pendingRoute;
     closeRouting();
 
+    const origIndex = cursor;
     const removed = calls.splice(cursor, 1);
     cursor = Math.min(cursor, calls.length - 1);
     updateTabCounts();
@@ -2062,15 +2066,25 @@
         const body = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(body.error || res.statusText);
       }
+      processedCalls.push(call);
       if (aliasStr) {
-        await fetch('/api/add-alias', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer: destDir, alias: aliasStr }),
-        });
+        try {
+          const aliasRes = await fetch('/api/add-alias', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer: destDir, alias: aliasStr }),
+          });
+          if (!aliasRes.ok) {
+            const body = await aliasRes.json().catch(() => ({ error: aliasRes.statusText }));
+            showToast('Alias failed: ' + (body.error || aliasRes.statusText));
+          }
+        } catch (aliasErr) {
+          showToast('Alias failed: ' + aliasErr.message);
+        }
       }
     } catch (err) {
-      calls.splice(cursor, 0, ...removed);
+      calls.splice(origIndex, 0, ...removed);
+      cursor = origIndex;
       updateTabCounts();
       render();
       showToast('Route failed: ' + err.message);

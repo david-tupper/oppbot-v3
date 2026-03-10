@@ -506,7 +506,7 @@ def api_route():
             return jsonify({"error": f"Unknown dest_dir: {dest_dir}"}), 400
         if not _re.match(r'^[a-z0-9][a-z0-9-]*$', dest_dir):
             return jsonify({"error": "dest_dir must match ^[a-z0-9][a-z0-9-]*$"}), 400
-        (CUSTOMERS_DIR / dest_dir).mkdir()
+        (CUSTOMERS_DIR / dest_dir).mkdir(exist_ok=True)
 
     # Resolve source dir
     src_gong_dir = PROCESSED_GONG_DIR if source == "processed" else UNMATCHED_GONG_DIR
