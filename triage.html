@@ -1017,6 +1017,20 @@
   }
   .cx-selection-count { color: #888; font-size: 0.85em; }
 
+  /* Toolbar button with inline tooltip */
+  .cx-btn-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cx-btn-wrap .tooltip-icon { margin-left: 0; }
+  .cx-btn-wrap .tooltip-text {
+    bottom: auto;
+    top: calc(100% + 6px);
+    transform: translateX(-50%);
+  }
+
   /* Context table */
   .cx-table { width: 100%; border-collapse: collapse; }
   .cx-header { display: grid; grid-template-columns: 36px 70px 1fr 1fr 100px 120px 60px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -1315,9 +1329,9 @@
     </div>
     <div class="intel-content-wrapper">
       <div id="cx-toolbar" class="cx-toolbar" style="display:none">
-        <button id="cx-export-btn" class="modal-btn" disabled>Export Selected</button><i class="tooltip-icon">i<span class="tooltip-text">Download selected entries as a single .md file.<br>Useful for feeding context into other tools.</span></i>
-        <button id="cx-remove-btn" class="modal-btn danger" disabled>Remove Context</button><i class="tooltip-icon">i<span class="tooltip-text">Soft-delete selected entries so they are<br>excluded from future synthesis runs.<br>Entries can be restored by clicking them again.</span></i>
-        <button id="cx-resynth-btn" class="modal-btn primary">Resynthesize</button><i class="tooltip-icon">i<span class="tooltip-text">Rebuild Tech Stack and 3 Whys from scratch<br>using only active (non-deleted) entries.<br>Deleted entries will be excluded.</span></i>
+        <span class="cx-btn-wrap"><button id="cx-export-btn" class="modal-btn" disabled>Export Selected</button><i class="tooltip-icon">i<span class="tooltip-text">Download selected entries as a single .md file.<br>Useful for feeding context into other tools.</span></i></span>
+        <span class="cx-btn-wrap"><button id="cx-remove-btn" class="modal-btn danger" disabled>Remove Context</button><i class="tooltip-icon">i<span class="tooltip-text">Soft-delete selected entries so they are<br>excluded from future synthesis runs.<br>Entries can be restored by clicking them again.</span></i></span>
+        <span class="cx-btn-wrap"><button id="cx-resynth-btn" class="modal-btn primary">Resynthesize</button><i class="tooltip-icon">i<span class="tooltip-text">Rebuild Tech Stack and 3 Whys from scratch<br>using only active (non-deleted) entries.<br>Deleted entries will be excluded.</span></i></span>
         <span id="cx-selection-count" class="cx-selection-count"></span>
       </div>
       <div id="cx-table-container" style="overflow-y:auto;flex:1;padding:0">
