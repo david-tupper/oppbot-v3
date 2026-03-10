@@ -7,6 +7,7 @@ Usage:
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -32,16 +33,18 @@ except ImportError:
 _job_status: dict = {}
 
 try:
-    from tech_stack_update import update_tech_stack, delete_entry as _ts_delete_entry
+    from tech_stack_update import update_tech_stack, delete_entry as _ts_delete_entry, _init_tech_stack
     TECH_STACK_AVAILABLE = True
 except ImportError:
     TECH_STACK_AVAILABLE = False
+    def _init_tech_stack(name): return f"# Tech Stack — {name}\n"
 
 try:
-    from three_whys_update import update_3_whys, delete_entry as _3w_delete_entry
+    from three_whys_update import update_3_whys, delete_entry as _3w_delete_entry, _init_3_whys, _init_3_whys_json, save_3_whys_json
     THREE_WHYS_AVAILABLE = True
 except ImportError:
     THREE_WHYS_AVAILABLE = False
+    def _init_3_whys(name): return f"# 3 Whys — {name}\n"
 
 CUSTOMERS_DIR = Path.home() / "customers"
 UNMATCHED_GONG_DIR = CUSTOMERS_DIR / "_unmatched" / "unprocessed" / "gong"
@@ -108,6 +111,284 @@ def api_processed():
 def api_customers():
     dirs = list_customer_dirs(CUSTOMERS_DIR)
     return jsonify(sorted(d.name for d in dirs))
+
+
+@app.route("/api/transcripts")
+def api_transcripts():
+    sort_key = request.args.get("sort", "fetched_at")
+    order = request.args.get("order", "desc")
+
+    all_calls = []
+
+    # Customer dirs
+    for customer_dir in list_customer_dirs(CUSTOMERS_DIR):
+        gong_dir = customer_dir / "gong"
+        if gong_dir.is_dir():
+            manifest = load_manifest(gong_dir)
+            for call in manifest.get("calls", []):
+                call["customer"] = customer_dir.name
+                all_calls.append(call)
+
+    # _unmatched dirs
+    for sub in ("unprocessed", "processed"):
+        gong_dir = CUSTOMERS_DIR / "_unmatched" / sub / "gong"
+        if gong_dir.is_dir():
+            manifest = load_manifest(gong_dir)
+            for call in manifest.get("calls", []):
+                call["customer"] = f"_unmatched/{sub}"
+                all_calls.append(call)
+
+    all_calls.sort(key=lambda c: c.get(sort_key, ""), reverse=(order != "asc"))
+    return jsonify(all_calls)
+
+
+@app.route("/api/fetch-log")
+def api_fetch_log():
+    job_id_filter = request.args.get("job_id")
+    log_path = CUSTOMERS_DIR / ".fetch_log.jsonl"
+    entries = []
+    if log_path.exists():
+        try:
+            for line in log_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if job_id_filter and entry.get("job_id") != job_id_filter:
+                    continue
+                entries.append(entry)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    entries.reverse()
+    return jsonify(entries)
+
+
+@app.route('/api/customer/<name>/context')
+def api_customer_context(name):
+    customer_dir = CUSTOMERS_DIR / name
+    if not customer_dir.exists():
+        return jsonify({'error': f'Unknown customer: {name}'}), 404
+
+    entries = []
+
+    # Gong entries
+    gong_dir = customer_dir / 'gong'
+    gong_manifest = load_manifest(gong_dir)
+    for call in gong_manifest.get('calls', []):
+        entries.append({
+            'id': call['pkey_id'],
+            'source': 'gong',
+            'title': call.get('call_title', ''),
+            'date': (call.get('call_ended_at') or '')[:10],
+            'owner': call.get('owner', ''),
+            'chars': call.get('transcript_chars', 0),
+            'deleted': call.get('deleted', False),
+            'file': call.get('file', ''),
+            'brief': call.get('call_spotlight_brief', ''),
+        })
+
+    # Manual entries
+    manual_entries = _load_manual_manifest(customer_dir)
+    for entry in manual_entries:
+        md_file = f"{entry['manual_id']}.md"
+        md_path = customer_dir / 'manual' / md_file
+        chars = len(md_path.read_text(encoding='utf-8')) if md_path.exists() else 0
+        entries.append({
+            'id': entry['manual_id'],
+            'source': 'manual',
+            'title': entry.get('call_title', ''),
+            'date': (entry.get('created_at') or '')[:10],
+            'owner': 'Manual',
+            'chars': chars,
+            'deleted': entry.get('deleted', False),
+            'file': md_file,
+            'brief': '',
+        })
+
+    entries.sort(key=lambda e: e['date'], reverse=True)
+    return jsonify(entries)
+
+
+@app.route('/api/customer/<name>/context/<ctx_id>/toggle-delete', methods=['POST'])
+def api_toggle_delete(name, ctx_id):
+    customer_dir = CUSTOMERS_DIR / name
+    if not customer_dir.exists():
+        return jsonify({'error': f'Unknown customer: {name}'}), 404
+
+    # Try gong manifest
+    gong_dir = customer_dir / 'gong'
+    gong_manifest = load_manifest(gong_dir)
+    for call in gong_manifest.get('calls', []):
+        if call.get('pkey_id') == ctx_id:
+            new_state = not call.get('deleted', False)
+            call['deleted'] = new_state
+            save_manifest(gong_dir, gong_manifest)
+            return jsonify({'ok': True, 'deleted': new_state})
+
+    # Try manual manifest
+    manual_entries = _load_manual_manifest(customer_dir)
+    for entry in manual_entries:
+        if entry.get('manual_id') == ctx_id:
+            new_state = not entry.get('deleted', False)
+            entry['deleted'] = new_state
+            _save_manual_manifest(customer_dir, manual_entries)
+            return jsonify({'ok': True, 'deleted': new_state})
+
+    return jsonify({'error': f'Entry not found: {ctx_id}'}), 404
+
+
+@app.route('/api/customer/<name>/export', methods=['POST'])
+def api_customer_export(name):
+    customer_dir = CUSTOMERS_DIR / name
+    if not customer_dir.exists():
+        return jsonify({'error': f'Unknown customer: {name}'}), 404
+
+    data = request.get_json(force=True)
+    ids = data.get('ids', [])
+    if not ids:
+        return jsonify({'error': 'No IDs provided'}), 400
+
+    # Build lookup of id -> file path
+    file_map = {}
+    gong_manifest = load_manifest(customer_dir / 'gong')
+    for call in gong_manifest.get('calls', []):
+        file_map[call['pkey_id']] = customer_dir / 'gong' / call.get('file', '')
+
+    manual_entries = _load_manual_manifest(customer_dir)
+    for entry in manual_entries:
+        file_map[entry['manual_id']] = customer_dir / 'manual' / f"{entry['manual_id']}.md"
+
+    parts = []
+    for eid in ids:
+        path = file_map.get(eid)
+        if path and path.exists():
+            parts.append(path.read_text(encoding='utf-8'))
+
+    if not parts:
+        return jsonify({'error': 'No files found for given IDs'}), 404
+
+    content = '\n\n---\n\n'.join(parts)
+    from io import BytesIO
+    buf = BytesIO(content.encode('utf-8'))
+    return send_file(
+        buf,
+        mimetype='text/markdown',
+        as_attachment=True,
+        download_name=f'{name}-export.md',
+    )
+
+
+@app.route('/api/customer/<name>/resynthesize', methods=['POST'])
+def api_resynthesize(name):
+    customer_dir = CUSTOMERS_DIR / name
+    if not customer_dir.exists():
+        return jsonify({'error': f'Unknown customer: {name}'}), 404
+
+    if not TECH_STACK_AVAILABLE and not THREE_WHYS_AVAILABLE:
+        return jsonify({'error': 'No enrichment modules available'}), 500
+
+    # Collect all non-deleted entries
+    all_entries = []
+
+    gong_manifest = load_manifest(customer_dir / 'gong')
+    for call in gong_manifest.get('calls', []):
+        if not call.get('deleted', False):
+            all_entries.append({
+                'date': (call.get('call_ended_at') or '')[:10],
+                'path': customer_dir / 'gong' / call.get('file', ''),
+            })
+
+    manual_entries = _load_manual_manifest(customer_dir)
+    for entry in manual_entries:
+        if not entry.get('deleted', False):
+            all_entries.append({
+                'date': (entry.get('created_at') or '')[:10],
+                'path': customer_dir / 'manual' / f"{entry['manual_id']}.md",
+            })
+
+    # Filter to entries with existing files
+    all_entries = [e for e in all_entries if e['path'].exists()]
+    all_entries.sort(key=lambda e: e['date'])
+
+    if not all_entries:
+        return jsonify({'error': 'No active entries to resynthesize'}), 400
+
+    resynth_id = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S') + '_resynth'
+
+    # Build step list
+    steps = [
+        {'label': 'Initializing tech stack', 'state': 'pending'},
+        {'label': 'Initializing 3 whys', 'state': 'pending'},
+    ]
+    for e in all_entries:
+        fname = e['path'].name
+        if TECH_STACK_AVAILABLE:
+            steps.append({'label': f'Tech stack: {fname}', 'state': 'pending'})
+        if THREE_WHYS_AVAILABLE:
+            steps.append({'label': f'3 Whys: {fname}', 'state': 'pending'})
+
+    _job_status[resynth_id] = {'steps': steps, 'done': False, 'error': None}
+
+    def make_callback(rid):
+        def callback(label):
+            job = _job_status.get(rid)
+            if not job:
+                return
+            s = job['steps']
+            for step in s:
+                if step['state'] == 'active':
+                    step['state'] = 'done'
+                    break
+            for step in s:
+                if step['label'] == label and step['state'] == 'pending':
+                    step['state'] = 'active'
+                    break
+        return callback
+
+    def run_resynth():
+        cb = make_callback(resynth_id)
+        try:
+            # Step 1: Re-init tech stack
+            cb('Initializing tech stack')
+            if TECH_STACK_AVAILABLE:
+                (customer_dir / 'tech_stack.md').write_text(
+                    _init_tech_stack(name), encoding='utf-8')
+
+            # Step 2: Re-init 3 whys
+            cb('Initializing 3 whys')
+            if THREE_WHYS_AVAILABLE:
+                (customer_dir / '3_whys_summary.md').write_text(
+                    _init_3_whys(name), encoding='utf-8')
+                save_3_whys_json(customer_dir, _init_3_whys_json(name))
+
+            # Process each entry
+            for e in all_entries:
+                transcript_path = e['path']
+                if TECH_STACK_AVAILABLE:
+                    update_tech_stack(transcript_path, customer_dir, progress_callback=cb)
+                if THREE_WHYS_AVAILABLE:
+                    update_3_whys(transcript_path, customer_dir, progress_callback=cb)
+
+        except Exception as ex:
+            if resynth_id in _job_status:
+                _job_status[resynth_id]['error'] = str(ex)
+        finally:
+            if resynth_id in _job_status:
+                for step in _job_status[resynth_id]['steps']:
+                    if step['state'] in ('active', 'pending'):
+                        step['state'] = 'done'
+                _job_status[resynth_id]['done'] = True
+
+    threading.Thread(target=run_resynth, daemon=True).start()
+    return jsonify({'resynth_id': resynth_id})
+
+
+@app.route('/api/resynthesize-status/<resynth_id>')
+def api_resynthesize_status(resynth_id):
+    return jsonify(_job_status.get(resynth_id, {'done': True, 'steps': [], 'error': 'not found'}))
 
 
 def _load_manual_manifest(customer_dir: Path) -> list:
@@ -322,20 +603,11 @@ def api_add_context_status(manual_id):
     return jsonify(_job_status.get(manual_id, {"done": True, "steps": [], "error": "not found"}))
 
 
-@app.route('/api/add-context/<customer>', methods=['POST'])
-def api_add_context(customer):
-    customer_dir = CUSTOMERS_DIR / customer
-    if not customer_dir.exists():
-        return jsonify({'error': f'Unknown customer: {customer}'}), 404
+def _run_add_context_job(customer_dir: Path, text: str, targets: list, title: str = '') -> str:
+    """Write a manual context file, update manifest, init job status, spawn enrichment thread.
 
-    data = request.get_json(force=True)
-    title = (data.get('title') or '').strip()
-    text = (data.get('text') or '').strip()
-    targets = data.get('targets', ['3-whys', 'tech-stack'])
-
-    if not text:
-        return jsonify({'error': 'text is required'}), 400
-
+    Returns manual_id.  Raises on I/O errors so callers can return appropriate HTTP errors.
+    """
     now = datetime.now(timezone.utc)
     manual_id = now.strftime('%Y%m%d_%H%M%S')
     date_str = now.strftime('%Y-%m-%d')
@@ -363,10 +635,7 @@ def api_add_context(customer):
     manual_dir = customer_dir / "manual"
     manual_dir.mkdir(parents=True, exist_ok=True)
     manual_file = manual_dir / f"{manual_id}.md"
-    try:
-        manual_file.write_text(manual_content, encoding="utf-8")
-    except Exception as e:
-        return jsonify({'error': f'Could not write file: {e}'}), 500
+    manual_file.write_text(manual_content, encoding="utf-8")
 
     # Update manifest
     entries = _load_manual_manifest(customer_dir)
@@ -394,19 +663,16 @@ def api_add_context(customer):
             if not job:
                 return
             s = job["steps"]
-            # Mark the currently active step done
             for step in s:
                 if step["state"] == "active":
                     step["state"] = "done"
                     break
-            # Mark the matching pending step active
             for step in s:
                 if step["label"] == label and step["state"] == "pending":
                     step["state"] = "active"
                     break
         return callback
 
-    # Spawn background enrichment
     def enrich():
         cb = make_callback(manual_id)
         try:
@@ -419,13 +685,33 @@ def api_add_context(customer):
                 _job_status[manual_id]["error"] = str(e)
         finally:
             if manual_id in _job_status:
-                # Mark any remaining active/pending steps done
                 for step in _job_status[manual_id]["steps"]:
                     if step["state"] in ("active", "pending"):
                         step["state"] = "done"
                 _job_status[manual_id]["done"] = True
 
     threading.Thread(target=enrich, daemon=True).start()
+    return manual_id
+
+
+@app.route('/api/add-context/<customer>', methods=['POST'])
+def api_add_context(customer):
+    customer_dir = CUSTOMERS_DIR / customer
+    if not customer_dir.exists():
+        return jsonify({'error': f'Unknown customer: {customer}'}), 404
+
+    data = request.get_json(force=True)
+    title = (data.get('title') or '').strip()
+    text = (data.get('text') or '').strip()
+    targets = data.get('targets', ['3-whys', 'tech-stack'])
+
+    if not text:
+        return jsonify({'error': 'text is required'}), 400
+
+    try:
+        manual_id = _run_add_context_job(customer_dir, text, targets, title)
+    except Exception as e:
+        return jsonify({'error': f'Could not write file: {e}'}), 500
 
     return jsonify({'status': 'processing', 'manual_id': manual_id})
 
@@ -462,6 +748,34 @@ def api_delete_manual(customer, manual_id):
     _save_manual_manifest(customer_dir, entries)
 
     return jsonify({'status': 'ok'})
+
+
+@app.route('/api/customers', methods=['POST'])
+def api_create_customer():
+    data = request.get_json(force=True)
+    name = (data.get('name') or '').strip()
+    aliases = [a.strip() for a in (data.get('aliases') or []) if a.strip()]
+
+    if not re.match(r'^[a-z0-9][a-z0-9-]*$', name):
+        return jsonify({'error': 'name must match ^[a-z0-9][a-z0-9-]*$'}), 400
+
+    customer_dir = CUSTOMERS_DIR / name
+    if customer_dir.exists():
+        return jsonify({'error': f'Customer already exists: {name}'}), 400
+
+    customer_dir.mkdir(parents=True)
+    (customer_dir / 'gong').mkdir()
+    save_manifest(customer_dir / 'gong', {})
+    _save_manual_manifest(customer_dir, [])
+
+    if aliases:
+        routing_path = customer_dir / 'gong_routing.json'
+        routing_path.write_text(json.dumps({'aliases': aliases}, indent=2))
+
+    (customer_dir / 'tech_stack.md').write_text(_init_tech_stack(name), encoding='utf-8')
+    (customer_dir / '3_whys_summary.md').write_text(_init_3_whys(name), encoding='utf-8')
+
+    return jsonify({'ok': True})
 
 
 if __name__ == "__main__":

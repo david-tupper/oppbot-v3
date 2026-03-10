@@ -455,7 +455,7 @@
     color: var(--text-muted);
     font-family: var(--mono);
     font-size: 12px;
-    text-decoration: none;
+    cursor: pointer;
     flex-shrink: 0;
   }
 
@@ -881,6 +881,43 @@
     color: #f0a0a0;
   }
 
+  /* New Customer modal */
+  #new-customer-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0,0,0,0.5);
+  }
+
+  #new-customer-modal-backdrop.visible { display: block; }
+
+  #new-customer-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    padding: 20px;
+  }
+
+  #new-customer-modal h3 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  #nc-slug {
+    color: var(--text-dim);
+    cursor: default;
+  }
+
   /* Progress indicator */
   #ctx-progress {
     display: none;
@@ -972,6 +1009,105 @@
   .home-shortcut-row { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; }
   .home-shortcut-row kbd { background:var(--surface2); border:1px solid var(--border); border-radius:3px; padding:1px 5px; font-family:var(--mono); font-size:11px; color:var(--text); }
   .home-shortcut-desc { color:var(--text-dim); }
+
+  /* Context toolbar */
+  .cx-toolbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid #222;
+  }
+  .cx-selection-count { color: #888; font-size: 0.85em; }
+
+  /* Context table */
+  .cx-table { width: 100%; border-collapse: collapse; }
+  .cx-header { display: grid; grid-template-columns: 36px 70px 1fr 100px 120px 60px 50px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .cx-header > div { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+  .cx-row { display: grid; grid-template-columns: 36px 70px 1fr 100px 120px 60px 50px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; }
+  .cx-row:hover { background: #1a1d24; }
+  .cx-row.deleted { opacity: 0.4; }
+  .cx-row.deleted .cx-title { text-decoration: line-through; }
+
+  /* Source badge */
+  .cx-source { font-size: 0.75em; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; font-family: var(--mono); }
+  .cx-source.gong { background: #1a3a2a; color: #5dba7d; }
+  .cx-source.manual { background: #2a2a1a; color: #bba85d; }
+
+  /* Action buttons in rows */
+  .cx-action-btn { background: none; border: none; color: #888; cursor: pointer; padding: 4px; font-size: 14px; }
+  .cx-action-btn:hover { color: #ff6b6b; }
+  .cx-row.deleted .cx-action-btn:hover { color: #5dba7d; }
+
+  .cx-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+  .cx-date { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+  .cx-owner { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cx-size { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-align: right; }
+  .cx-checkbox { display: flex; align-items: center; justify-content: center; }
+  .cx-checkbox input { cursor: pointer; }
+
+  /* Help modal */
+  #help-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0,0,0,0.5);
+  }
+  #help-modal-backdrop.visible { display: block; }
+  #help-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    width: 640px;
+    max-width: calc(100vw - 32px);
+    padding: 20px;
+  }
+  .help-github {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .help-github a {
+    color: var(--accent);
+    font-size: 12px;
+    text-decoration: none;
+    font-family: var(--mono);
+  }
+  .help-github a:hover { text-decoration: underline; }
+  .help-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-bottom: 18px; }
+  .help-section-title {
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .help-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+  }
+  .help-desc { font-size: 13px; color: var(--text); }
+  .help-keys { display: flex; gap: 4px; }
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -981,10 +1117,11 @@
     <h1>oppbot</h1>
     <div id="nav">
       <button class="nav-btn active" data-view="home">Home</button>
+      <button class="nav-btn" data-view="customers">Customers</button>
       <button class="nav-btn" data-view="triage">Triage<span id="triage-badge" class="nav-badge" style="display:none"></span></button>
       <button class="nav-btn" data-view="tech-stack">Tech Stack</button>
       <button class="nav-btn" data-view="3-whys">3 Whys</button>
-      <a href="https://github.com/david-tupper/oppbot-v3" target="_blank" id="help-btn" title="GitHub repo">?</a>
+      <button id="help-btn" title="Help">?</button>
     </div>
   </div>
 
@@ -1026,7 +1163,7 @@
       </div>
 
       <div class="home-section">
-        <div class="home-section-title">Tab 2 — Triage</div>
+        <div class="home-section-title">Tab 3 — Triage</div>
         <div class="home-card" style="margin-bottom:10px">
           <div class="home-card-body" style="font-size:13px;line-height:1.7">
             The Triage queue is where unrouted Gong calls land. After each sync, calls that don't match a known routing alias appear here. Your job is to review each call and assign it to a customer folder.
@@ -1040,7 +1177,7 @@
       </div>
 
       <div class="home-section">
-        <div class="home-section-title">Tab 3 — Tech Stack</div>
+        <div class="home-section-title">Tab 4 — Tech Stack</div>
         <div class="home-card" style="margin-bottom:10px">
           <div class="home-card-body" style="font-size:13px;line-height:1.7">
             Shows per-customer tech stack intelligence extracted from Gong call transcripts by Claude AI.
@@ -1055,7 +1192,7 @@
       </div>
 
       <div class="home-section">
-        <div class="home-section-title">Tab 4 — 3 Whys</div>
+        <div class="home-section-title">Tab 5 — 3 Whys</div>
         <div class="home-card" style="margin-bottom:10px">
           <div class="home-card-body" style="font-size:13px;line-height:1.7">
             Shows per-customer 3 Whys intelligence — the strategic buying narrative extracted from calls. The framework captures: <strong style="color:var(--text)">Why Anything</strong> (what pain is driving evaluation), <strong style="color:var(--text)">Why Now</strong> (the urgency or trigger), and <strong style="color:var(--text)">Why Grafana</strong> (the specific fit or differentiator).
@@ -1093,14 +1230,16 @@
       </div>
 
       <div class="home-section">
-        <div class="home-section-title">Keyboard shortcuts</div>
+        <div class="home-section-title">Help</div>
         <div class="home-shortcut-groups">
           <div class="home-shortcut-group">
             <div class="home-shortcut-group-title">Global</div>
             <div class="home-shortcut-row"><div><kbd>h</kbd> / <kbd>1</kbd></div><div class="home-shortcut-desc">Home</div></div>
-            <div class="home-shortcut-row"><div><kbd>2</kbd></div><div class="home-shortcut-desc">Triage view</div></div>
-            <div class="home-shortcut-row"><div><kbd>3</kbd></div><div class="home-shortcut-desc">Tech Stack view</div></div>
-            <div class="home-shortcut-row"><div><kbd>4</kbd></div><div class="home-shortcut-desc">3 Whys view</div></div>
+            <div class="home-shortcut-row"><div><kbd>2</kbd></div><div class="home-shortcut-desc">Customers view</div></div>
+            <div class="home-shortcut-row"><div><kbd>3</kbd></div><div class="home-shortcut-desc">Triage view</div></div>
+            <div class="home-shortcut-row"><div><kbd>4</kbd></div><div class="home-shortcut-desc">Tech Stack view</div></div>
+            <div class="home-shortcut-row"><div><kbd>5</kbd></div><div class="home-shortcut-desc">3 Whys view</div></div>
+            <div class="home-shortcut-row"><div><kbd>n</kbd></div><div class="home-shortcut-desc">New customer</div></div>
           </div>
           <div class="home-shortcut-group">
             <div class="home-shortcut-group-title">Triage</div>
@@ -1172,13 +1311,31 @@
     </div>
   </div>
 
+  <div id="customers-view" class="intel-view" style="display:none">
+    <div class="customer-panel">
+      <div class="customer-search"><input id="cx-search" type="text" placeholder="filter..." autocomplete="off" spellcheck="false"></div>
+      <div id="cx-customer-list" class="customer-list-items"></div>
+    </div>
+    <div class="intel-content-wrapper">
+      <div id="cx-toolbar" class="cx-toolbar" style="display:none">
+        <button id="cx-export-btn" class="modal-btn" disabled>Export Selected</button>
+        <button id="cx-resynth-btn" class="modal-btn primary">Resynthesize</button>
+        <span id="cx-selection-count" class="cx-selection-count"></span>
+      </div>
+      <div id="cx-table-container" style="overflow-y:auto;flex:1;padding:0">
+        <p class="placeholder" style="padding:24px 32px">Select a customer</p>
+      </div>
+    </div>
+  </div>
+
   <div id="hint-bar">
-    <span class="hint-item"><kbd>2</kbd>/<kbd>3</kbd>/<kbd>4</kbd> switch view</span>
+    <span class="hint-item"><kbd>2</kbd>/<kbd>3</kbd>/<kbd>4</kbd>/<kbd>5</kbd> switch view</span>
     <span class="hint-sep"> | </span>
     <span class="hint-item"><kbd>1</kbd> Home</span>
-    <span class="hint-item"><kbd>2</kbd> Triage</span>
-    <span class="hint-item"><kbd>3</kbd> Tech Stack</span>
-    <span class="hint-item"><kbd>4</kbd> 3 Whys</span>
+    <span class="hint-item"><kbd>2</kbd> Customers</span>
+    <span class="hint-item"><kbd>3</kbd> Triage</span>
+    <span class="hint-item"><kbd>4</kbd> Tech Stack</span>
+    <span class="hint-item"><kbd>5</kbd> 3 Whys</span>
   </div>
 </div>
 
@@ -1225,6 +1382,79 @@
     <div class="modal-actions">
       <button class="modal-btn" id="del-cancel-btn">Cancel</button>
       <button class="modal-btn danger" id="del-confirm-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Customer modal -->
+<div id="new-customer-modal-backdrop">
+  <div id="new-customer-modal">
+    <h3>New Customer</h3>
+    <div id="nc-input-area">
+      <div class="modal-field">
+        <label>Display name</label>
+        <input id="nc-name" type="text" placeholder="e.g., Acme Corp" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="modal-field">
+        <label>Slug (auto-derived)</label>
+        <input id="nc-slug" type="text" readonly placeholder="acme-corp">
+      </div>
+      <div class="modal-field">
+        <label>Additional aliases (comma-separated, optional)</label>
+        <input id="nc-aliases" type="text" placeholder="e.g., ACME, Acme Inc." autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <span class="modal-status" id="nc-status"></span>
+      <button class="modal-btn" id="nc-cancel-btn">Cancel</button>
+      <button class="modal-btn primary" id="nc-create-btn">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div id="help-modal-backdrop">
+  <div id="help-modal">
+    <h3>Help & Keyboard Shortcuts</h3>
+    <div class="help-github">
+      <a href="https://github.com/david-tupper/oppbot-v3" target="_blank">github.com/david-tupper/oppbot-v3</a>
+    </div>
+    <div class="help-sections">
+      <div class="help-section">
+        <div class="help-section-title">Global</div>
+        <div class="help-row"><span class="help-desc">Home</span><span class="help-keys"><kbd>h</kbd><kbd>1</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Customers</span><span class="help-keys"><kbd>2</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Triage</span><span class="help-keys"><kbd>3</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Tech Stack</span><span class="help-keys"><kbd>4</kbd></span></div>
+        <div class="help-row"><span class="help-desc">3 Whys</span><span class="help-keys"><kbd>5</kbd></span></div>
+        <div class="help-row"><span class="help-desc">New customer</span><span class="help-keys"><kbd>n</kbd></span></div>
+        <div class="help-row"><span class="help-desc">This help screen</span><span class="help-keys"><kbd>?</kbd></span></div>
+      </div>
+      <div class="help-section">
+        <div class="help-section-title">Triage</div>
+        <div class="help-row"><span class="help-desc">Navigate calls</span><span class="help-keys"><kbd>↑</kbd><kbd>↓</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Route selected call</span><span class="help-keys"><kbd>Enter</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Skip call</span><span class="help-keys"><kbd>s</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Unprocessed tab</span><span class="help-keys"><kbd>u</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Processed tab</span><span class="help-keys"><kbd>p</kbd></span></div>
+      </div>
+      <div class="help-section">
+        <div class="help-section-title">Routing Overlay</div>
+        <div class="help-row"><span class="help-desc">Navigate suggestions</span><span class="help-keys"><kbd>↑</kbd><kbd>↓</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Select / confirm</span><span class="help-keys"><kbd>Tab</kbd><kbd>Enter</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Close</span><span class="help-keys"><kbd>Esc</kbd></span></div>
+      </div>
+      <div class="help-section">
+        <div class="help-section-title">Customers / Tech Stack / 3 Whys</div>
+        <div class="help-row"><span class="help-desc">Previous / next customer</span><span class="help-keys"><kbd>↑</kbd><kbd>↓</kbd></span></div>
+      </div>
+      <div class="help-section">
+        <div class="help-section-title">Modals</div>
+        <div class="help-row"><span class="help-desc">Close</span><span class="help-keys"><kbd>Esc</kbd></span></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn primary" id="help-close-btn">Close</button>
     </div>
   </div>
 </div>
@@ -1333,9 +1563,9 @@
 
   function updateHintBar() {
     const bar = document.getElementById('hint-bar');
-    const navHints = `<span class="hint-sep"> | </span><span class="hint-item"><kbd>1</kbd> Home</span><span class="hint-item"><kbd>2</kbd> Triage</span><span class="hint-item"><kbd>3</kbd> Tech Stack</span><span class="hint-item"><kbd>4</kbd> 3 Whys</span>`;
+    const navHints = `<span class="hint-sep"> | </span><span class="hint-item"><kbd>1</kbd> Home</span><span class="hint-item"><kbd>2</kbd> Customers</span><span class="hint-item"><kbd>3</kbd> Triage</span><span class="hint-item"><kbd>4</kbd> Tech Stack</span><span class="hint-item"><kbd>5</kbd> 3 Whys</span>`;
     if (activeView === 'home') {
-      bar.innerHTML = `<span class="hint-item"><kbd>2</kbd>/<kbd>3</kbd>/<kbd>4</kbd> switch view</span>` + navHints;
+      bar.innerHTML = `<span class="hint-item"><kbd>2</kbd>/<kbd>3</kbd>/<kbd>4</kbd>/<kbd>5</kbd> switch view</span>` + navHints;
     } else if (activeView === 'triage') {
       const skipDisplay = activeTab === 'unprocessed' ? '' : 'none';
       bar.innerHTML =
@@ -1366,11 +1596,17 @@
     document.getElementById('triage-view').style.display = view === 'triage' ? '' : 'none';
     document.getElementById('tech-stack-view').style.display = view === 'tech-stack' ? '' : 'none';
     document.getElementById('3-whys-view').style.display = view === '3-whys' ? '' : 'none';
+    document.getElementById('customers-view').style.display = view === 'customers' ? '' : 'none';
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.view === view);
     });
     updateHintBar();
-    if (view !== 'triage' && view !== 'home' && customers.length > 0) {
+    if (view === 'customers' && customers.length > 0) {
+      const filter = document.getElementById('cx-search')?.value || '';
+      if (!selectedCustomer) selectedCustomer = customers[0];
+      renderCustomerList('cx-customer-list', 'customers', filter);
+      selectCustomerContext(selectedCustomer);
+    } else if (view !== 'triage' && view !== 'home' && customers.length > 0) {
       const panelId = view === 'tech-stack' ? 'ts-customer-list' : 'tw-customer-list';
       const searchId = view === 'tech-stack' ? 'ts-search' : 'tw-search';
       const filter = document.getElementById(searchId)?.value || '';
@@ -1468,13 +1704,17 @@
         break;
       case '2':
         e.preventDefault();
-        switchView('triage');
+        switchView('customers');
         break;
       case '3':
         e.preventDefault();
-        switchView('tech-stack');
+        switchView('triage');
         break;
       case '4':
+        e.preventDefault();
+        switchView('tech-stack');
+        break;
+      case '5':
         e.preventDefault();
         switchView('3-whys');
         break;
@@ -1482,13 +1722,23 @@
         if (activeView === 'triage' || activeView === 'home') return;
         e.preventDefault();
         { const idx = customers.indexOf(selectedCustomer);
-          if (idx > 0) selectCustomer(activeView, customers[idx - 1]); }
+          if (idx > 0) {
+            const target = customers[idx - 1];
+            if (activeView === 'customers') selectCustomerContext(target);
+            else selectCustomer(activeView, target);
+          }
+        }
         break;
       case 'ArrowDown':
         if (activeView === 'triage' || activeView === 'home') return;
         e.preventDefault();
         { const idx = customers.indexOf(selectedCustomer);
-          if (idx < customers.length - 1) selectCustomer(activeView, customers[idx + 1]); }
+          if (idx < customers.length - 1) {
+            const target = customers[idx + 1];
+            if (activeView === 'customers') selectCustomerContext(target);
+            else selectCustomer(activeView, target);
+          }
+        }
         break;
       case 'p':
         if (activeView !== 'triage') return;
@@ -1499,6 +1749,16 @@
         if (activeView !== 'triage') return;
         e.preventDefault();
         switchTab('unprocessed');
+        break;
+      case 'n':
+        e.preventDefault();
+        openNewCustomerModal();
+        break;
+      case '?':
+        if (!ncModalBackdrop.classList.contains('visible')) {
+          e.preventDefault();
+          openHelpModal();
+        }
         break;
     }
   });
@@ -1781,14 +2041,17 @@
       const el = document.createElement('div');
       el.className = 'customer-item' + (name === selectedCustomer ? ' selected' : '');
       el.textContent = name;
-      el.addEventListener('click', () => selectCustomer(view, name));
+      el.addEventListener('click', () => {
+        if (view === 'customers') selectCustomerContext(name);
+        else selectCustomer(view, name);
+      });
       panel.appendChild(el);
     });
   }
 
   // Wire search inputs (once, on init)
   function initCustomerSearch() {
-    [['ts-search', 'ts-customer-list', 'tech-stack'], ['tw-search', 'tw-customer-list', '3-whys']].forEach(([inputId, panelId, view]) => {
+    [['ts-search', 'ts-customer-list', 'tech-stack'], ['tw-search', 'tw-customer-list', '3-whys'], ['cx-search', 'cx-customer-list', 'customers']].forEach(([inputId, panelId, view]) => {
       document.getElementById(inputId).addEventListener('input', function () {
         renderCustomerList(panelId, view, this.value);
       });
@@ -2102,6 +2365,315 @@
   function deleteManualEntry(customer, manual_id, view) {
     openDeleteModal(customer, manual_id, view);
   }
+
+  // -------------------------------------------------------------------------
+  // New Customer modal
+  // -------------------------------------------------------------------------
+  const ncModalBackdrop = document.getElementById('new-customer-modal-backdrop');
+  const ncCancelBtn = document.getElementById('nc-cancel-btn');
+  const ncCreateBtn = document.getElementById('nc-create-btn');
+  const ncStatus = document.getElementById('nc-status');
+
+  function openNewCustomerModal() {
+    document.getElementById('nc-name').value = '';
+    document.getElementById('nc-slug').value = '';
+    document.getElementById('nc-aliases').value = '';
+    ncStatus.textContent = '';
+    ncStatus.style.color = '';
+    ncCreateBtn.disabled = false;
+    ncCancelBtn.disabled = false;
+    ncModalBackdrop.classList.add('visible');
+    document.getElementById('nc-name').focus();
+  }
+
+  function closeNewCustomerModal() {
+    ncModalBackdrop.classList.remove('visible');
+  }
+
+  document.getElementById('nc-name').addEventListener('input', (e) => {
+    const slug = e.target.value.trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    document.getElementById('nc-slug').value = slug;
+  });
+
+  ncModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === ncModalBackdrop && !ncCancelBtn.disabled) closeNewCustomerModal();
+  });
+
+  ncCancelBtn.addEventListener('click', closeNewCustomerModal);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && ncModalBackdrop.classList.contains('visible') && !ncCancelBtn.disabled) {
+      closeNewCustomerModal();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Help modal
+  // -------------------------------------------------------------------------
+  const helpModalBackdrop = document.getElementById('help-modal-backdrop');
+  const helpCloseBtn = document.getElementById('help-close-btn');
+
+  function openHelpModal() {
+    helpModalBackdrop.classList.add('visible');
+  }
+  function closeHelpModal() {
+    helpModalBackdrop.classList.remove('visible');
+  }
+
+  document.getElementById('help-btn').addEventListener('click', openHelpModal);
+  helpCloseBtn.addEventListener('click', closeHelpModal);
+  helpModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === helpModalBackdrop) closeHelpModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && helpModalBackdrop.classList.contains('visible')) {
+      closeHelpModal();
+    }
+  });
+
+  ncCreateBtn.addEventListener('click', async () => {
+    const name = document.getElementById('nc-name').value.trim();
+    const slug = document.getElementById('nc-slug').value;
+    const aliasesRaw = document.getElementById('nc-aliases').value;
+
+    if (!slug) {
+      ncStatus.textContent = 'Display name is required.';
+      return;
+    }
+
+    const extras = aliasesRaw.split(',').map(a => a.trim()).filter(Boolean);
+    const aliases = name ? [name, ...extras] : extras;
+
+    ncCreateBtn.disabled = true;
+    ncCancelBtn.disabled = true;
+    ncStatus.textContent = '';
+
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: slug, aliases }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || res.statusText);
+
+      await loadData();
+      closeNewCustomerModal();
+      switchView('tech-stack');
+      selectCustomer('tech-stack', slug);
+    } catch (err) {
+      ncStatus.textContent = 'Error: ' + err.message;
+      ncStatus.style.color = '#e05252';
+      ncCreateBtn.disabled = false;
+      ncCancelBtn.disabled = false;
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Customers / Context view
+  // -------------------------------------------------------------------------
+  let contextEntries = [];
+  let contextSelected = new Set();
+
+  function selectCustomerContext(name) {
+    selectedCustomer = name;
+    // Update customer list highlight
+    document.querySelectorAll('#cx-customer-list .customer-item').forEach(el => {
+      const sel = el.textContent === name;
+      el.classList.toggle('selected', sel);
+      if (sel) el.scrollIntoView({ block: 'nearest' });
+    });
+
+    // Also sync other panels
+    ['ts-customer-list', 'tw-customer-list'].forEach(pid => {
+      document.querySelectorAll('#' + pid + ' .customer-item').forEach(el => {
+        el.classList.toggle('selected', el.textContent === name);
+      });
+    });
+
+    // Show toolbar
+    document.getElementById('cx-toolbar').style.display = '';
+    contextSelected = new Set();
+    updateExportBtn();
+
+    // Fetch context
+    fetch('/api/customer/' + encodeURIComponent(name) + '/context')
+      .then(r => r.json())
+      .then(entries => {
+        contextEntries = entries;
+        renderContextTable();
+      })
+      .catch(() => {
+        contextEntries = [];
+        document.getElementById('cx-table-container').innerHTML = '<p class="placeholder" style="padding:24px 32px">Failed to load context.</p>';
+      });
+  }
+
+  function renderContextTable() {
+    const container = document.getElementById('cx-table-container');
+    if (contextEntries.length === 0) {
+      container.innerHTML = '<p class="placeholder" style="padding:24px 32px">No context entries for this customer.</p>';
+      return;
+    }
+
+    let html = '<div class="cx-header"><div></div><div>Source</div><div>Title</div><div>Date</div><div>Owner</div><div>Size</div><div></div></div>';
+    contextEntries.forEach((entry, i) => {
+      const deleted = entry.deleted ? ' deleted' : '';
+      const checked = contextSelected.has(entry.id) ? ' checked' : '';
+      html += `<div class="cx-row${deleted}" data-idx="${i}">` +
+        `<div class="cx-checkbox"><input type="checkbox"${checked} data-id="${esc(entry.id)}"></div>` +
+        `<div><span class="cx-source ${esc(entry.source)}">${esc(entry.source)}</span></div>` +
+        `<div class="cx-title">${esc(entry.title)}</div>` +
+        `<div class="cx-date">${esc(entry.date)}</div>` +
+        `<div class="cx-owner">${esc(entry.owner)}</div>` +
+        `<div class="cx-size">${esc(formatSize(entry.chars))}</div>` +
+        `<div><button class="cx-action-btn" data-id="${esc(entry.id)}" title="${entry.deleted ? 'Restore' : 'Exclude from synthesis'}">${entry.deleted ? '↩' : '🗑'}</button></div>` +
+        `</div>`;
+    });
+    container.innerHTML = html;
+
+    // Wire checkbox handlers
+    container.querySelectorAll('.cx-checkbox input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) contextSelected.add(cb.dataset.id);
+        else contextSelected.delete(cb.dataset.id);
+        updateExportBtn();
+      });
+    });
+
+    // Wire delete/restore handlers
+    container.querySelectorAll('.cx-action-btn').forEach(btn => {
+      btn.addEventListener('click', () => toggleDeleteEntry(btn.dataset.id));
+    });
+  }
+
+  function updateExportBtn() {
+    const btn = document.getElementById('cx-export-btn');
+    const count = document.getElementById('cx-selection-count');
+    btn.disabled = contextSelected.size === 0;
+    count.textContent = contextSelected.size > 0 ? contextSelected.size + ' selected' : '';
+  }
+
+  async function toggleDeleteEntry(id) {
+    if (!selectedCustomer) return;
+    try {
+      const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/context/' + encodeURIComponent(id) + '/toggle-delete', {
+        method: 'POST',
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || res.statusText);
+
+      // Update local state
+      const entry = contextEntries.find(e => e.id === id);
+      if (entry) entry.deleted = body.deleted;
+      renderContextTable();
+      showToast(body.deleted ? 'Entry excluded from synthesis' : 'Entry restored');
+    } catch (err) {
+      showToast('Toggle failed: ' + err.message);
+    }
+  }
+
+  // Export handler
+  document.getElementById('cx-export-btn').addEventListener('click', async () => {
+    if (!selectedCustomer || contextSelected.size === 0) return;
+    try {
+      const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [...contextSelected] }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error || res.statusText);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = selectedCustomer + '-export.md';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast('Export failed: ' + err.message);
+    }
+  });
+
+  // Resynthesize handler
+  document.getElementById('cx-resynth-btn').addEventListener('click', async () => {
+    if (!selectedCustomer) return;
+    const activeCount = contextEntries.filter(e => !e.deleted).length;
+    if (activeCount === 0) {
+      showToast('No active entries to resynthesize');
+      return;
+    }
+    if (!confirm(`This will rebuild Tech Stack and 3 Whys from scratch using ${activeCount} active entries. This may take several minutes. Continue?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/resynthesize', {
+        method: 'POST',
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || res.statusText);
+
+      const resynthId = body.resynth_id;
+
+      // Show progress in the context table area
+      const container = document.getElementById('cx-table-container');
+      container.innerHTML = '<div style="padding:24px 32px"><div class="progress-bar-track"><div class="progress-bar-fill" id="resynth-progress-bar" style="width:0%"></div></div><ul class="progress-steps" id="resynth-progress-steps"></ul></div>';
+
+      let pollErrors = 0;
+      const pollInterval = setInterval(async () => {
+        try {
+          const sr = await fetch('/api/resynthesize-status/' + encodeURIComponent(resynthId));
+          const status = await sr.json();
+          pollErrors = 0;
+
+          // Render progress
+          const stepsEl = document.getElementById('resynth-progress-steps');
+          const barEl = document.getElementById('resynth-progress-bar');
+          if (stepsEl && barEl) {
+            const icons = { pending: '○', active: '◉', done: '✓', error: '×' };
+            stepsEl.innerHTML = (status.steps || []).map(s =>
+              `<li class="progress-step step-${s.state}"><span class="step-icon">${icons[s.state] || '○'}</span>${s.label}</li>`
+            ).join('');
+            const total = (status.steps || []).length;
+            const done = (status.steps || []).filter(s => s.state === 'done').length;
+            barEl.style.width = total ? Math.round(done / total * 100) + '%' : '0%';
+          }
+
+          if (status.error) {
+            clearInterval(pollInterval);
+            showToast('Resynthesize error: ' + status.error);
+            selectCustomerContext(selectedCustomer);
+            return;
+          }
+
+          if (status.done) {
+            clearInterval(pollInterval);
+            showToast('Resynthesis complete');
+            selectCustomerContext(selectedCustomer);
+          }
+        } catch (_) {
+          pollErrors++;
+          if (pollErrors >= 20) {
+            clearInterval(pollInterval);
+            showToast('Server unreachable — check logs');
+            selectCustomerContext(selectedCustomer);
+          }
+        }
+      }, 2000);
+
+    } catch (err) {
+      showToast('Resynthesize failed: ' + err.message);
+    }
+  });
 
   // -------------------------------------------------------------------------
   // Toast
