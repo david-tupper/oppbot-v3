@@ -181,6 +181,13 @@
     text-overflow: ellipsis;
     padding-right: 12px;
     text-align: left;
+    cursor: pointer;
+  }
+
+  .col-brief.expanded,
+  .cx-brief.expanded {
+    white-space: normal;
+    word-break: break-word;
   }
 
   .col-size {
@@ -1046,7 +1053,7 @@
   .cx-source.manual { background: #2a2a1a; color: #bba85d; }
 
   .cx-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
-  .cx-brief { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cx-brief { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
   .cx-row.deleted .cx-brief { opacity: 0.6; }
   .cx-date { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
   .cx-owner { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1449,6 +1456,7 @@
         <div class="help-row"><span class="help-desc">Skip call</span><span class="help-keys"><kbd>s</kbd></span></div>
         <div class="help-row"><span class="help-desc">Unprocessed tab</span><span class="help-keys"><kbd>u</kbd></span></div>
         <div class="help-row"><span class="help-desc">Processed tab</span><span class="help-keys"><kbd>p</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Toggle word wrap</span><span class="help-keys"><kbd>w</kbd></span></div>
       </div>
       <div class="help-section">
         <div class="help-section-title">Routing Overlay</div>
@@ -1459,6 +1467,7 @@
       <div class="help-section">
         <div class="help-section-title">Customers / Tech Stack / 3 Whys</div>
         <div class="help-row"><span class="help-desc">Previous / next customer</span><span class="help-keys"><kbd>↑</kbd><kbd>↓</kbd></span></div>
+        <div class="help-row"><span class="help-desc">Toggle word wrap</span><span class="help-keys"><kbd>w</kbd></span></div>
       </div>
       <div class="help-section">
         <div class="help-section-title">Modals</div>
@@ -1508,6 +1517,7 @@
   let acIndex = 0;         // autocomplete selected index
   let activeTab = 'unprocessed';
   let activeView = 'home';
+  let briefWrapMode = false;
   let selectedCustomer = null;
   let pendingRoute = null; // { destDir, create, call, removed }
 
@@ -1585,11 +1595,13 @@
         `<span class="hint-item hint-skip" style="display:${skipDisplay}"><kbd>s</kbd> skip</span>` +
         `<span class="hint-item"><kbd>Enter</kbd> route</span>` +
         `<span class="hint-item"><kbd>u</kbd>/<kbd>p</kbd> switch tab</span>` +
+        `<span class="hint-item"><kbd>w</kbd> word wrap</span>` +
         `<span class="hint-item"><kbd>Esc</kbd> cancel</span>` +
         navHints;
     } else {
       bar.innerHTML =
         `<span class="hint-item"><kbd>↑</kbd>/<kbd>↓</kbd> navigate customers</span>` +
+        `<span class="hint-item"><kbd>w</kbd> word wrap</span>` +
         navHints;
     }
   }
@@ -1663,6 +1675,12 @@
         '<div class="col-brief">' + esc(call.call_spotlight_brief || '') + '</div>' +
         '<div class="col-size">' + esc(formatSize(call.transcript_chars || 0)) + '</div>';
 
+      // Per-cell click to toggle word wrap on summary
+      row.querySelector('.col-brief').addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.currentTarget.classList.toggle('expanded');
+      });
+
       row.addEventListener('click', () => {
         cursor = i;
         render();
@@ -1675,6 +1693,10 @@
 
       listContainer.appendChild(row);
     });
+
+    if (briefWrapMode) {
+      listContainer.querySelectorAll('.col-brief').forEach(el => el.classList.add('expanded'));
+    }
 
     scrollCursorIntoView();
   }
@@ -1765,6 +1787,16 @@
       case 'n':
         e.preventDefault();
         openNewCustomerModal();
+        break;
+      case 'w':
+        if (activeView === 'triage' || activeView === 'customers') {
+          e.preventDefault();
+          briefWrapMode = !briefWrapMode;
+          const sel = activeView === 'triage' ? '.col-brief' : '.cx-brief';
+          document.querySelectorAll(sel).forEach(el => {
+            el.classList.toggle('expanded', briefWrapMode);
+          });
+        }
         break;
       case '?':
         if (!ncModalBackdrop.classList.contains('visible')) {
@@ -2555,6 +2587,18 @@
         updateToolbarBtns();
       });
     });
+
+    // Per-cell click to toggle word wrap on summary
+    container.querySelectorAll('.cx-brief').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.classList.toggle('expanded');
+      });
+    });
+
+    if (briefWrapMode) {
+      container.querySelectorAll('.cx-brief').forEach(el => el.classList.add('expanded'));
+    }
   }
 
   function updateToolbarBtns() {
