@@ -1019,9 +1019,9 @@
 
   /* Context table */
   .cx-table { width: 100%; border-collapse: collapse; }
-  .cx-header { display: grid; grid-template-columns: 36px 70px 1fr 100px 120px 60px 50px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .cx-header { display: grid; grid-template-columns: 36px 70px 1fr 1fr 100px 120px 60px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
   .cx-header > div { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
-  .cx-row { display: grid; grid-template-columns: 36px 70px 1fr 100px 120px 60px 50px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; }
+  .cx-row { display: grid; grid-template-columns: 36px 70px 1fr 1fr 100px 120px 60px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; }
   .cx-row:hover { background: #1a1d24; }
   .cx-row.deleted { opacity: 0.4; }
   .cx-row.deleted .cx-title { text-decoration: line-through; }
@@ -1031,12 +1031,9 @@
   .cx-source.gong { background: #1a3a2a; color: #5dba7d; }
   .cx-source.manual { background: #2a2a1a; color: #bba85d; }
 
-  /* Action buttons in rows */
-  .cx-action-btn { background: none; border: none; color: #888; cursor: pointer; padding: 4px; font-size: 14px; }
-  .cx-action-btn:hover { color: #ff6b6b; }
-  .cx-row.deleted .cx-action-btn:hover { color: #5dba7d; }
-
   .cx-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+  .cx-brief { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cx-row.deleted .cx-brief { opacity: 0.6; }
   .cx-date { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
   .cx-owner { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cx-size { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-align: right; }
@@ -1318,8 +1315,9 @@
     </div>
     <div class="intel-content-wrapper">
       <div id="cx-toolbar" class="cx-toolbar" style="display:none">
-        <button id="cx-export-btn" class="modal-btn" disabled>Export Selected</button>
-        <button id="cx-resynth-btn" class="modal-btn primary">Resynthesize</button>
+        <button id="cx-export-btn" class="modal-btn" disabled>Export Selected</button><i class="tooltip-icon">i<span class="tooltip-text">Download selected entries as a single .md file.<br>Useful for feeding context into other tools.</span></i>
+        <button id="cx-remove-btn" class="modal-btn danger" disabled>Remove Context</button><i class="tooltip-icon">i<span class="tooltip-text">Soft-delete selected entries so they are<br>excluded from future synthesis runs.<br>Entries can be restored by clicking them again.</span></i>
+        <button id="cx-resynth-btn" class="modal-btn primary">Resynthesize</button><i class="tooltip-icon">i<span class="tooltip-text">Rebuild Tech Stack and 3 Whys from scratch<br>using only active (non-deleted) entries.<br>Deleted entries will be excluded.</span></i>
         <span id="cx-selection-count" class="cx-selection-count"></span>
       </div>
       <div id="cx-table-container" style="overflow-y:auto;flex:1;padding:0">
@@ -2497,7 +2495,7 @@
     // Show toolbar
     document.getElementById('cx-toolbar').style.display = '';
     contextSelected = new Set();
-    updateExportBtn();
+    updateToolbarBtns();
 
     // Fetch context
     fetch('/api/customer/' + encodeURIComponent(name) + '/context')
@@ -2519,7 +2517,7 @@
       return;
     }
 
-    let html = '<div class="cx-header"><div></div><div>Source</div><div>Title</div><div>Date</div><div>Owner</div><div>Size</div><div></div></div>';
+    let html = '<div class="cx-header"><div></div><div>Source</div><div>Title</div><div>Summary</div><div>Date</div><div>Owner</div><div>Size</div></div>';
     contextEntries.forEach((entry, i) => {
       const deleted = entry.deleted ? ' deleted' : '';
       const checked = contextSelected.has(entry.id) ? ' checked' : '';
@@ -2527,10 +2525,10 @@
         `<div class="cx-checkbox"><input type="checkbox"${checked} data-id="${esc(entry.id)}"></div>` +
         `<div><span class="cx-source ${esc(entry.source)}">${esc(entry.source)}</span></div>` +
         `<div class="cx-title">${esc(entry.title)}</div>` +
+        `<div class="cx-brief">${esc(entry.brief)}</div>` +
         `<div class="cx-date">${esc(entry.date)}</div>` +
         `<div class="cx-owner">${esc(entry.owner)}</div>` +
         `<div class="cx-size">${esc(formatSize(entry.chars))}</div>` +
-        `<div><button class="cx-action-btn" data-id="${esc(entry.id)}" title="${entry.deleted ? 'Restore' : 'Exclude from synthesis'}">${entry.deleted ? '↩' : '🗑'}</button></div>` +
         `</div>`;
     });
     container.innerHTML = html;
@@ -2540,41 +2538,43 @@
       cb.addEventListener('change', () => {
         if (cb.checked) contextSelected.add(cb.dataset.id);
         else contextSelected.delete(cb.dataset.id);
-        updateExportBtn();
+        updateToolbarBtns();
       });
-    });
-
-    // Wire delete/restore handlers
-    container.querySelectorAll('.cx-action-btn').forEach(btn => {
-      btn.addEventListener('click', () => toggleDeleteEntry(btn.dataset.id));
     });
   }
 
-  function updateExportBtn() {
-    const btn = document.getElementById('cx-export-btn');
+  function updateToolbarBtns() {
+    const exportBtn = document.getElementById('cx-export-btn');
+    const removeBtn = document.getElementById('cx-remove-btn');
     const count = document.getElementById('cx-selection-count');
-    btn.disabled = contextSelected.size === 0;
+    exportBtn.disabled = contextSelected.size === 0;
+    removeBtn.disabled = contextSelected.size === 0;
     count.textContent = contextSelected.size > 0 ? contextSelected.size + ' selected' : '';
   }
 
-  async function toggleDeleteEntry(id) {
-    if (!selectedCustomer) return;
-    try {
-      const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/context/' + encodeURIComponent(id) + '/toggle-delete', {
-        method: 'POST',
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || res.statusText);
-
-      // Update local state
-      const entry = contextEntries.find(e => e.id === id);
-      if (entry) entry.deleted = body.deleted;
-      renderContextTable();
-      showToast(body.deleted ? 'Entry excluded from synthesis' : 'Entry restored');
-    } catch (err) {
-      showToast('Toggle failed: ' + err.message);
+  // Remove Context handler (multi-select toggle)
+  document.getElementById('cx-remove-btn').addEventListener('click', async () => {
+    if (!selectedCustomer || contextSelected.size === 0) return;
+    const ids = [...contextSelected];
+    let toggled = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/context/' + encodeURIComponent(id) + '/toggle-delete', {
+          method: 'POST',
+        });
+        const body = await res.json();
+        if (res.ok) {
+          const entry = contextEntries.find(e => e.id === id);
+          if (entry) entry.deleted = body.deleted;
+          toggled++;
+        }
+      } catch (_) {}
     }
-  }
+    contextSelected = new Set();
+    updateToolbarBtns();
+    renderContextTable();
+    showToast(toggled + ' ' + (toggled === 1 ? 'entry' : 'entries') + ' toggled');
+  });
 
   // Export handler
   document.getElementById('cx-export-btn').addEventListener('click', async () => {
