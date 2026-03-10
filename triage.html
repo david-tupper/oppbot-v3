@@ -1035,7 +1035,9 @@
   .cx-btn-wrap .tooltip-text {
     bottom: auto;
     top: calc(100% + 6px);
-    transform: translateX(-50%);
+    right: 0;
+    left: auto;
+    transform: none;
   }
 
   /* Context table */
@@ -1336,10 +1338,11 @@
     </div>
     <div class="intel-content-wrapper">
       <div id="cx-toolbar" class="cx-toolbar" style="display:none">
-        <span class="cx-btn-wrap"><button id="cx-export-btn" class="modal-btn" disabled>Export Selected</button><i class="tooltip-icon">i<span class="tooltip-text">Download selected entries as a single .md file.<br>Useful for feeding context into other tools.</span></i></span>
-        <span class="cx-btn-wrap"><button id="cx-remove-btn" class="modal-btn danger" disabled>Remove Context</button><i class="tooltip-icon">i<span class="tooltip-text">Soft-delete selected entries so they are<br>excluded from future synthesis runs.<br>Entries can be restored by clicking them again.</span></i></span>
-        <span class="cx-btn-wrap"><button id="cx-resynth-btn" class="modal-btn primary">Resynthesize</button><i class="tooltip-icon">i<span class="tooltip-text">Rebuild Tech Stack and 3 Whys from scratch<br>using only active (non-deleted) entries.<br>Deleted entries will be excluded.</span></i></span>
+        <button id="cx-export-btn" class="modal-btn" disabled title="Download selected entries as a single .md file">Export</button>
+        <button id="cx-remove-btn" class="modal-btn danger" disabled title="Remove selected entries from future synthesis runs. Entries are not permanently deleted and can be restored.">Remove</button>
+        <button id="cx-restore-btn" class="modal-btn" disabled title="Restore selected deleted entries, including them in future synthesis">Restore</button>
         <span id="cx-selection-count" class="cx-selection-count"></span>
+        <span class="cx-btn-wrap" style="margin-left:auto"><button id="cx-resynth-btn" class="modal-btn primary" disabled>Resynthesize</button><i class="tooltip-icon">i<span class="tooltip-text">Rebuild Tech Stack and 3 Whys from scratch<br>using only active (non-deleted) entries.<br>Deleted entries will be excluded.</span></i></span>
       </div>
       <div id="cx-table-container" style="overflow-y:auto;flex:1;padding:0">
         <p class="placeholder" style="padding:24px 32px">Select a customer</p>
@@ -2604,34 +2607,63 @@
   function updateToolbarBtns() {
     const exportBtn = document.getElementById('cx-export-btn');
     const removeBtn = document.getElementById('cx-remove-btn');
+    const restoreBtn = document.getElementById('cx-restore-btn');
+    const resynthBtn = document.getElementById('cx-resynth-btn');
     const count = document.getElementById('cx-selection-count');
+    const selectedEntries = contextEntries.filter(e => contextSelected.has(e.id));
+    const hasActive = selectedEntries.some(e => !e.deleted);
+    const hasDeleted = selectedEntries.some(e => e.deleted);
     exportBtn.disabled = contextSelected.size === 0;
-    removeBtn.disabled = contextSelected.size === 0;
+    removeBtn.disabled = !hasActive;
+    restoreBtn.disabled = !hasDeleted;
+    resynthBtn.disabled = !contextEntries.some(e => !e.deleted);
     count.textContent = contextSelected.size > 0 ? contextSelected.size + ' selected' : '';
   }
 
-  // Remove Context handler (multi-select toggle)
+  // Remove handler — only acts on active (non-deleted) entries
   document.getElementById('cx-remove-btn').addEventListener('click', async () => {
     if (!selectedCustomer || contextSelected.size === 0) return;
-    const ids = [...contextSelected];
-    let toggled = 0;
+    const ids = contextEntries.filter(e => contextSelected.has(e.id) && !e.deleted).map(e => e.id);
+    if (ids.length === 0) return;
+    let count = 0;
     for (const id of ids) {
       try {
-        const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/context/' + encodeURIComponent(id) + '/toggle-delete', {
-          method: 'POST',
-        });
+        const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/context/' + encodeURIComponent(id) + '/toggle-delete', { method: 'POST' });
         const body = await res.json();
         if (res.ok) {
           const entry = contextEntries.find(e => e.id === id);
           if (entry) entry.deleted = body.deleted;
-          toggled++;
+          count++;
         }
       } catch (_) {}
     }
     contextSelected = new Set();
     updateToolbarBtns();
     renderContextTable();
-    showToast(toggled + ' ' + (toggled === 1 ? 'entry' : 'entries') + ' toggled');
+    showToast(count + ' ' + (count === 1 ? 'entry' : 'entries') + ' removed');
+  });
+
+  // Restore handler — only acts on deleted entries
+  document.getElementById('cx-restore-btn').addEventListener('click', async () => {
+    if (!selectedCustomer || contextSelected.size === 0) return;
+    const ids = contextEntries.filter(e => contextSelected.has(e.id) && e.deleted).map(e => e.id);
+    if (ids.length === 0) return;
+    let count = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch('/api/customer/' + encodeURIComponent(selectedCustomer) + '/context/' + encodeURIComponent(id) + '/toggle-delete', { method: 'POST' });
+        const body = await res.json();
+        if (res.ok) {
+          const entry = contextEntries.find(e => e.id === id);
+          if (entry) entry.deleted = body.deleted;
+          count++;
+        }
+      } catch (_) {}
+    }
+    contextSelected = new Set();
+    updateToolbarBtns();
+    renderContextTable();
+    showToast(count + ' ' + (count === 1 ? 'entry' : 'entries') + ' restored');
   });
 
   // Export handler
@@ -2665,10 +2697,7 @@
   document.getElementById('cx-resynth-btn').addEventListener('click', async () => {
     if (!selectedCustomer) return;
     const activeCount = contextEntries.filter(e => !e.deleted).length;
-    if (activeCount === 0) {
-      showToast('No active entries to resynthesize');
-      return;
-    }
+    if (activeCount === 0) return;
     if (!confirm(`This will rebuild Tech Stack and 3 Whys from scratch using ${activeCount} active entries. This may take several minutes. Continue?`)) {
       return;
     }
