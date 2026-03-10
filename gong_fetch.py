@@ -405,6 +405,15 @@ def save_sync_state(customers_dir: Path, state: dict):
     tmp.rename(final)
 
 
+def append_fetch_log(customers_dir: Path, entry: dict):
+    log_path = customers_dir / ".fetch_log.jsonl"
+    try:
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, default=str) + "\n")
+    except Exception as e:
+        print(f"WARNING: Could not write fetch log: {e}", file=sys.stderr)
+
+
 # ---------------------------------------------------------------------------
 # Manual fetch (by title pattern → specific account dir)
 # ---------------------------------------------------------------------------
@@ -412,6 +421,7 @@ def save_sync_state(customers_dir: Path, state: dict):
 def run_fetch(args):
     client = get_bq_client()
     customers_dir = Path(args.customers_dir)
+    job_id = f"account_{args.account}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
     patterns = [p.strip() for p in args.title_pattern.split(",")] if args.title_pattern else [args.account]
     print(f"Searching call titles for: {patterns}")
@@ -446,7 +456,7 @@ def run_fetch(args):
     calls_index = {c["pkey_id"]: c for c in manifest.get("calls", [])}
     known_ids = set(calls_index.keys())
 
-    fetched_at = datetime.now(timezone.utc).isoformat()
+    job_started_at = datetime.now(timezone.utc).isoformat()
     new_count = 0
     skipped_count = 0
 
@@ -459,6 +469,7 @@ def run_fetch(args):
         owner_name = OWNER_ID_TO_NAME.get(str(row.owner_id), row.owner_id or "Unknown")
         date_str = row.call_ended_at.strftime("%Y-%m-%d") if row.call_ended_at and hasattr(row.call_ended_at, "strftime") else ""
         filename = f"{date_str}_{slugify(row.call_title or 'untitled')}.md"
+        fetched_at = datetime.now(timezone.utc).isoformat()
 
         try:
             md_content = format_call_md(row, owner_name, fetched_at)
@@ -477,7 +488,21 @@ def run_fetch(args):
             "file": filename,
             "transcript_chars": len(md_content),
             "call_spotlight_brief": (row.call_spotlight_brief or "")[:300],
+            "fetched_at": fetched_at,
+            "fetch_mode": "account",
+            "job_id": job_id,
         }
+        append_fetch_log(customers_dir, {
+            "job_id": job_id,
+            "ts": fetched_at,
+            "fetch_mode": "account",
+            "pkey_id": pkey_id,
+            "call_title": row.call_title or "",
+            "call_ended_at": date_str,
+            "customer": args.account,
+            "filename": filename,
+            "transcript_chars": len(md_content),
+        })
         new_count += 1
         print(f"  Wrote: {filename}")
         if TECH_STACK_AVAILABLE:
@@ -487,7 +512,7 @@ def run_fetch(args):
 
     manifest = {
         "account": args.account,
-        "last_fetched": fetched_at,
+        "last_fetched": job_started_at,
         "fetch_params": {"patterns": patterns, "since": args.since, "limit": args.limit},
         "total_calls": len(calls_index),
         "calls": list(calls_index.values()),
@@ -507,6 +532,7 @@ def run_sync(args):
 
     client = get_bq_client()
     customers_dir = Path(args.customers_dir)
+    job_id = f"sync_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
     owner_ids = list(OWNER_IDS.values())
 
     since = args.since
@@ -540,12 +566,12 @@ def run_sync(args):
     customer_dirs = list_customer_dirs(customers_dir)
     routing = load_routing(customer_dirs)
 
-    fetched_at = datetime.now(timezone.utc).isoformat()
+    job_started_at = datetime.now(timezone.utc).isoformat()
     new_count = 0
     skipped_count = 0
     unmatched_count = 0
 
-    # Accumulate writes per customer: {customer_name: [(row, filename, md_content)]}
+    # Accumulate writes per customer: {customer_name: [(row, pkey_id, date_str, filename, md_content, fetched_at)]}
     writes: dict[str, list] = {}
 
     for row in rows:
@@ -573,6 +599,7 @@ def run_sync(args):
             print(f"  {filename}  {status}")
             print(f"    {row.call_title or 'Untitled'}  (owner: {owner_name})")
         else:
+            fetched_at = datetime.now(timezone.utc).isoformat()
             try:
                 md_content = format_call_md(row, owner_name, fetched_at)
             except Exception as e:
@@ -581,7 +608,7 @@ def run_sync(args):
 
             if dest not in writes:
                 writes[dest] = []
-            writes[dest].append((row, pkey_id, date_str, filename, md_content))
+            writes[dest].append((row, pkey_id, date_str, filename, md_content, fetched_at))
 
         if not customer:
             unmatched_count += 1
@@ -599,7 +626,7 @@ def run_sync(args):
         manifest = load_manifest(gong_dir)
         calls_index = {c["pkey_id"]: c for c in manifest.get("calls", [])}
 
-        for row, pkey_id, date_str, filename, md_content in call_list:
+        for row, pkey_id, date_str, filename, md_content, fetched_at in call_list:
             filename = unique_filename(gong_dir, filename)
             filepath = gong_dir / filename
             filepath.write_text(md_content, encoding="utf-8")
@@ -611,7 +638,21 @@ def run_sync(args):
                 "file": filename,
                 "transcript_chars": len(md_content),
                 "call_spotlight_brief": (row.call_spotlight_brief or "")[:300],
+                "fetched_at": fetched_at,
+                "fetch_mode": "sync",
+                "job_id": job_id,
             }
+            append_fetch_log(customers_dir, {
+                "job_id": job_id,
+                "ts": fetched_at,
+                "fetch_mode": "sync",
+                "pkey_id": pkey_id,
+                "call_title": row.call_title or "",
+                "call_ended_at": date_str,
+                "customer": dest,
+                "filename": filename,
+                "transcript_chars": len(md_content),
+            })
             processed_ids[pkey_id] = date_str
             print(f"  [{dest}] {filename}  —  {row.call_title or 'Untitled'}")
             is_matched = not dest.startswith("_unmatched")
@@ -622,14 +663,14 @@ def run_sync(args):
 
         manifest = {
             "account": dest,
-            "last_fetched": fetched_at,
+            "last_fetched": job_started_at,
             "total_calls": len(calls_index),
             "calls": list(calls_index.values()),
         }
         save_manifest(gong_dir, manifest)
 
     # Save updated global sync state
-    sync_state["last_sync"] = fetched_at
+    sync_state["last_sync"] = job_started_at
     sync_state["processed_ids"] = processed_ids
     save_sync_state(customers_dir, sync_state)
 
@@ -660,6 +701,13 @@ def cmd_nuke(customers_dir: Path):
     if sync_state_path.exists():
         sync_state_path.unlink()
         print(f"  deleted  .gong_sync.json")
+        deleted += 1
+
+    # Fetch log
+    fetch_log_path = customers_dir / ".fetch_log.jsonl"
+    if fetch_log_path.exists():
+        fetch_log_path.unlink()
+        print(f"  deleted  .fetch_log.jsonl")
         deleted += 1
 
     # All dirs including _unmatched subdirs
